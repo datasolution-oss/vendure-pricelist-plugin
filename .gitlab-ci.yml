@@ -1,0 +1,19 @@
+include:
+  - component: $CI_SERVER_FQDN/ci-components/gitflow-hooks/node@1.0.0
+    inputs:
+      git_user: '$GIT_ACCESS_USER'
+      git_pass: '$GIT_ACCESS_PASSWORD'
+      tag: 'fast'
+  - component: $CI_SERVER_FQDN/ci-components/changelog/cliff-wild@1.0.2
+    inputs:
+      tag: fast
+
+  - component: $CI_SERVER_FQDN/ci-components/vendure/publish-module@1.0.5
+    inputs:
+      npm-registery-token: "${NPM_REGISTERY_TOKEN}"
+
+stages:
+  - versioning
+  - build
+  - changelog
+  - release
