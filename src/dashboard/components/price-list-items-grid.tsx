@@ -22,7 +22,7 @@ import { useLingui } from '@lingui/react/macro';
 import { useNavigate } from '@tanstack/react-router';
 import { ColumnFiltersState, SortingState } from '@tanstack/react-table';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2 } from 'lucide-react';
+import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -155,12 +155,21 @@ export function PriceListItemsGrid({
                             cell: ({ row }: any) => {
                                 const v = row.original.productVariant;
                                 return (
+                                    // ChevronRight is the navigation hint
+                                    // pattern Vendure uses on other detail
+                                    // links (e.g. orders). `ml-auto` pushes
+                                    // it to the right edge of the cell so
+                                    // the row reads "SKU — name        >".
                                     <Button
                                         variant="ghost"
                                         onClick={() => openEdit(v)}
+                                        className="w-full justify-start"
                                     >
                                         <span className="font-mono mr-2">{v.sku}</span>
-                                        <span className="text-muted-foreground">{v.name}</span>
+                                        <span className="text-muted-foreground">
+                                            {v.name}
+                                        </span>
+                                        <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground" />
                                     </Button>
                                 );
                             },

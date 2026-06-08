@@ -1,6 +1,8 @@
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
-import { Card, CardContent, CardHeader, CardTitle } from '@/vdb/components/ui/card.js';
+// Card wrapper intentionally removed — the parent `PageBlock` already
+// renders its own Card+CardHeader (driven by `title`/`description`
+// props). Wrapping here produced a visible double border.
 import { Input } from '@/vdb/components/ui/input.js';
 import { Switch } from '@/vdb/components/ui/switch.js';
 import {
@@ -14,7 +16,7 @@ import { CustomerSelector } from '@/vdb/components/shared/customer-selector.js';
 import { api } from '@/vdb/graphql/api.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -146,12 +148,8 @@ export function PriceListAccessBlock({
     });
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>{t`Customer access`}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6 text-sm">
-                <div className="flex items-center justify-between">
+        <div className="space-y-6 text-sm">
+            <div className="flex items-center justify-between">
                     <div>
                         <div className="font-medium">{t`Available to everyone`}</div>
                         <div className="text-muted-foreground">
@@ -194,9 +192,8 @@ export function PriceListAccessBlock({
                             removeBusy={removeGroupMutation.isPending}
                         />
                     </TabsContent>
-                </Tabs>
-            </CardContent>
-        </Card>
+            </Tabs>
+        </div>
     );
 }
 
@@ -290,7 +287,7 @@ function CustomersPane({
                                 disabled={disabled || removeBusy}
                                 aria-label={t`Remove`}
                             >
-                                <X className="h-3 w-3" />
+                                <Trash2 className="h-3 w-3 text-destructive" />
                             </Button>
                         </li>
                     ))}
@@ -408,7 +405,7 @@ function CustomerGroupsPane({
                                 disabled={disabled || removeBusy}
                                 aria-label={t`Remove`}
                             >
-                                <X className="h-3 w-3" />
+                                <Trash2 className="h-3 w-3 text-destructive" />
                             </Button>
                         </li>
                     ))}

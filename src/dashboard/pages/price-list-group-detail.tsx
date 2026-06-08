@@ -1,21 +1,7 @@
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/vdb/components/ui/card.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Label } from '@/vdb/components/ui/label.js';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/vdb/components/ui/table.js';
 import { api } from '@/vdb/graphql/api.js';
 import {
     Page,
@@ -25,6 +11,7 @@ import {
     PageLayout,
     PageTitle,
 } from '@/vdb/framework/layout-engine/page-layout.js';
+import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
@@ -41,9 +28,14 @@ export function PriceListGroupDetailPage() {
     const queryClient = useQueryClient();
     const params = useParams({ strict: false }) as { id?: string };
     const id = params.id;
+    // Active content language drives which translation row name/etc.
+    // hydrate from and which row the mutation writes. Same convention
+    // as the pricelist detail page.
+    const { settings } = useUserSettings();
+    const contentLanguage = settings.contentLanguage;
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ['pricelist-group', id],
+        queryKey: ['pricelist-group', id, contentLanguage],
         queryFn: () =>
             api.query(priceListGroupDetailQuery, {
                 id: id!,
@@ -61,9 +53,12 @@ export function PriceListGroupDetailPage() {
         if (!g) return;
         setCode(g.code);
         setPriority(g.priority);
-        const enTrans = g.translations.find(t => t.languageCode === 'en');
-        setName(enTrans?.name ?? g.name);
-    }, [g]);
+        // Prefer the translation row for the active content language,
+        // falling back to the server-translated name on cold-start
+        // (when no row exists yet for that language).
+        const tr = g.translations.find(x => x.languageCode === contentLanguage);
+        setName(tr?.name ?? g.name);
+    }, [g, contentLanguage]);
 
     const saveMutation = useMutation({
         mutationFn: () =>
@@ -72,7 +67,7 @@ export function PriceListGroupDetailPage() {
                     id: g!.id,
                     code,
                     priority,
-                    translations: [{ languageCode: 'en', name }],
+                    translations: [{ languageCode: contentLanguage, name }],
                 },
             } as any),
         onSuccess: () => {
@@ -115,87 +110,58 @@ export function PriceListGroupDetailPage() {
                 </PageActionBarRight>
             </PageActionBar>
             <PageLayout>
-                <PageBlock column="main" blockId="group-summary">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{t`Summary`}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <FormRow label={t`Code`}>
-                                <Input
-                                    value={code}
-                                    onChange={e => setCode(e.target.value)}
-                                />
-                            </FormRow>
-                            <FormRow label={t`Name (English)`}>
-                                <Input
-                                    value={name}
-                                    onChange={e => setName(e.target.value)}
-                                />
-                            </FormRow>
-                            <FormRow label={t`Priority`}>
-                                <Input
-                                    type="number"
-                                    value={priority}
-                                    onChange={e =>
-                                        setPriority(parseInt(e.target.value, 10) || 0)
-                                    }
-                                />
-                            </FormRow>
-                            <FormRow label={t`Channel`}>
-                                <code className="text-sm">{g.channel.code}</code>
-                            </FormRow>
-                            <FormRow label={t`Default for channel`}>
-                                {g.isDefault ? (
-                                    <Badge variant="success">{t`Yes`}</Badge>
-                                ) : (
-                                    <Badge variant="secondary">{t`No`}</Badge>
-                                )}
-                            </FormRow>
-                        </CardContent>
-                    </Card>
-                </PageBlock>
-
-                <PageBlock column="main" blockId="group-translations">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>
-                                {t`Translations (${g.translations.length})`}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {g.translations.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                    {t`No translations yet.`}
-                                </p>
+                {/*
+                  `PageBlock` already renders its own bordered card with
+                  CardHeader/CardContent — passing `title` plus content
+                  directly avoids the double-border anti-pattern.
+                */}
+                <PageBlock column="main" blockId="group-summary" title={t`Summary`}>
+                    <div className="space-y-4">
+                        <FormRow label={t`Code`}>
+                            <Input
+                                value={code}
+                                onChange={e => setCode(e.target.value)}
+                            />
+                        </FormRow>
+                        {/*
+                          Name is Translatable; we edit it for the active
+                          content language (selected via the top-bar
+                          language picker), so the field is plain "Name"
+                          without a locale suffix.
+                        */}
+                        <FormRow label={t`Name`}>
+                            <Input
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                            />
+                        </FormRow>
+                        <FormRow label={t`Priority`}>
+                            <Input
+                                type="number"
+                                value={priority}
+                                onChange={e =>
+                                    setPriority(parseInt(e.target.value, 10) || 0)
+                                }
+                            />
+                        </FormRow>
+                        <FormRow label={t`Channel`}>
+                            <code className="text-sm">{g.channel.code}</code>
+                        </FormRow>
+                        <FormRow label={t`Default for channel`}>
+                            {g.isDefault ? (
+                                <Badge variant="success">{t`Yes`}</Badge>
                             ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>{t`Language`}</TableHead>
-                                            <TableHead>{t`Name`}</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {g.translations.map(tr => (
-                                            <TableRow key={tr.id}>
-                                                <TableCell>
-                                                    <Badge variant="outline">
-                                                        {tr.languageCode}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell>{tr.name}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                <Badge variant="secondary">{t`No`}</Badge>
                             )}
-                            <p className="mt-2 text-xs text-muted-foreground">
-                                {t`Translations for other languages can be added via the Admin API.`}
-                            </p>
-                        </CardContent>
-                    </Card>
+                        </FormRow>
+                    </div>
                 </PageBlock>
+                {/*
+                  Translations block intentionally removed — inline editing
+                  of `Name` above writes to the active language's
+                  translation row. See PLAN-STAGE-1 §"Stage 1D refactor"
+                  for the equivalent change on the pricelist detail page.
+                */}
             </PageLayout>
         </Page>
     );
