@@ -1,6 +1,6 @@
 {
   "name": "@datasolution/vendure-plugin-pricelist",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Pricelist plugin for Vendure",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -16,7 +16,6 @@
     "jose": "^6.1.3",
     "@vendure/dashboard": "^3.6.0"
   },
- 
   "devDependencies": {
     "@vendure/core": "^3.6.2",
     "@vendure/testing": "^3.6.2",
