@@ -1,2 +1,5 @@
-node_modules
+node_modules/*
+!node_modules/.gitkeep
 lib
+lib
+e2e/__data__/*.sqlite

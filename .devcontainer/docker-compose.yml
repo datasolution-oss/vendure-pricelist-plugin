@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  app:
+    image: delivery.datasolution.fr/datasolution-docker-internal/devcontainers/vendure/javascript-node:24.1
+    volumes:
+      - ..:/workspace:cached
+      # Mac optimization: named volumes for hot paths bypass the slow bind mount.
+      - node_modules:/workspace/node_modules
+    # Overrides default command so things don't shut down after the process ends.
+    command: sleep infinity
+
+
+
+volumes:
+  node_modules:
+

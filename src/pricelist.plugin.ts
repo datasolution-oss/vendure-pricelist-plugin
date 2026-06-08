@@ -1,24 +1,37 @@
 import { PluginCommonModule, Type, VendurePlugin } from '@vendure/core';
 
+import { adminApiExtensions, ALL_RESOLVERS } from './api';
 import { PRICELIST_PLUGIN_OPTIONS } from './constants';
+import { ALL_ENTITIES } from './entities';
+import { priceListGroupPermission, priceListPermission } from './permissions';
+import { ALL_SERVICES } from './services';
 import { PluginInitOptions } from './types';
 
 @VendurePlugin({
     imports: [PluginCommonModule],
-    providers: [{ provide: PRICELIST_PLUGIN_OPTIONS, useFactory: () => PricelistPlugin.options }],
+    providers: [
+        ...ALL_SERVICES,
+        { provide: PRICELIST_PLUGIN_OPTIONS, useFactory: () => PricelistPlugin.options },
+    ],
+    entities: ALL_ENTITIES,
+    adminApiExtensions: {
+        schema: adminApiExtensions,
+        resolvers: ALL_RESOLVERS,
+    },
     configuration: config => {
-        // Plugin-specific configuration
-        // such as custom fields, custom permissions,
-        // strategies etc. can be configured here by
-        // modifying the `config` object.
+        config.authOptions.customPermissions.push(
+            priceListPermission,
+            priceListGroupPermission,
+        );
         return config;
     },
-    compatibility: '^3.0.0',
+    dashboard: './dashboard/index.tsx',
+    compatibility: '^3.6.0',
 })
 export class PricelistPlugin {
-    static options: PluginInitOptions;
+    static options: PluginInitOptions = {};
 
-    static init(options: PluginInitOptions): Type<PricelistPlugin> {
+    static init(options: PluginInitOptions = {}): Type<PricelistPlugin> {
         this.options = options;
         return PricelistPlugin;
     }

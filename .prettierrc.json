@@ -1,0 +1,55 @@
+{
+  "printWidth": 120,
+  "arrowParens": "avoid",
+  "singleQuote": true,
+  "trailingComma": "none",
+  "parser": "flow",
+  "endOfLine": "auto",
+  "plugins": [],
+  "overrides": [
+    {
+      "files": ["*.ts", "*.mjs", "*.mts"],
+      "options": {
+        "parser": "typescript"
+      }
+    },
+    {
+      "files": ["*.json", ".*.json", "*.code-snippets", "*.webmanifest"],
+      "options": {
+        "parser": "json",
+        "printWidth": 80
+      }
+    },
+    {
+      "files": [".lintstagedrc"],
+      "options": {
+        "parser": "json",
+        "printWidth": 80
+      }
+    },
+    {
+      "files": ["*.md", "LICENSE"],
+      "options": {
+        "parser": "markdown"
+      }
+    },
+    {
+      "files": "*.scss",
+      "options": {
+        "parser": "scss"
+      }
+    },
+    {
+      "files": "*.css",
+      "options": {
+        "parser": "css"
+      }
+    },
+    {
+      "files": ["*.yml", "*.yaml", ".*.yml"],
+      "options": {
+        "parser": "yaml"
+      }
+    }
+  ]
+}
