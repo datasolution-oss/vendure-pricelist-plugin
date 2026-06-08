@@ -94,7 +94,12 @@ export class PriceListService {
     findAll(
         ctx: RequestContext,
         options?: ListQueryOptions<PriceList>,
+        opts: { includeDeleted?: boolean } = {},
     ): Promise<PaginatedList<PriceList>> {
+        // `includeDeleted` lets the dashboard "Show pending deletion"
+        // toggle surface lists whose `deletedAt` is set. Without it,
+        // the default UX matches the historical Stage 1B behavior:
+        // soft-deleted lists are invisible.
         return this.listQueryBuilder
             .build(PriceList, options, {
                 relations: [
@@ -106,7 +111,7 @@ export class PriceListService {
                     'groupMemberships.group.translations',
                     'groupMemberships.group.channel',
                 ],
-                where: { deletedAt: IsNull() },
+                where: opts.includeDeleted ? {} : { deletedAt: IsNull() },
                 ctx,
                 channelId: ctx.channelId,
             })
@@ -273,6 +278,11 @@ export class PriceListService {
      * touched — they're filtered out of every item query by the join on
      * `priceList.deletedAt IS NULL`. Avoids the cascading per-row UPDATE
      * that would otherwise scale linearly with item count.
+     *
+     * Since Stage 1E, soft-deleted lists are also subject to the
+     * `purgePendingDeletionTask` cron, which hard-deletes them after the
+     * configured grace period. The merchandiser can call `restore` any
+     * time before the cron picks them up.
      */
     async softDelete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
         const list = await this.assertEditableList(ctx, id);
@@ -280,6 +290,96 @@ export class PriceListService {
             .getRepository(ctx, PriceList)
             .update({ id: list.id }, { deletedAt: new Date() });
         return { result: DeletionResult.DELETED };
+    }
+
+    /**
+     * Clear `deletedAt` on a pricelist that's still in its grace period
+     * (i.e. soft-deleted but not yet purged). Throws if the list is not
+     * actually pending deletion, or if the active channel isn't the
+     * origin — restoring from a non-origin channel would be inconsistent
+     * with the rest of the edit guards.
+     *
+     * Returns the now-active list, fully translated and relation-loaded
+     * (same shape as `findOne`), so the dashboard can refresh its row
+     * without a follow-up fetch.
+     */
+    async restore(ctx: RequestContext, id: ID): Promise<PriceList> {
+        const list = await this.connection
+            .getRepository(ctx, PriceList)
+            .findOne({ where: { id } });
+        if (!list) {
+            throw new UserInputError(`PriceList ${id} not found`);
+        }
+        if (!idsAreEqual(ctx.channelId, list.originChannelId)) {
+            throw new IllegalOperationError(ERR_PRICELIST_READONLY_NON_ORIGIN_CHANNEL);
+        }
+        if (list.deletedAt === null) {
+            // Idempotent: nothing to do, return the list as-is rather
+            // than error out — re-running Restore should be safe.
+            return this.findOne(ctx, id) as Promise<PriceList>;
+        }
+        await this.connection
+            .getRepository(ctx, PriceList)
+            .update({ id: list.id }, { deletedAt: null });
+        return this.findOne(ctx, id) as Promise<PriceList>;
+    }
+
+    /**
+     * Hard-delete pricelists whose grace period has expired. Called by
+     * the `purgePendingDeletionTask` scheduled task.
+     *
+     * Idempotent + interruption-safe: the WHERE clause naturally excludes
+     * rows already deleted, so re-running picks up where a killed run
+     * left off. Each batch is its own transaction — an SIGTERM mid-batch
+     * rolls back that batch only, and the cascade FKs guarantee child
+     * tables (`price_list_item`, translations, group memberships,
+     * channel pivots, customer/group pivots) follow on row deletion.
+     *
+     * Returns the count of pricelists actually purged, for telemetry.
+     */
+    async purgePending(
+        ctx: RequestContext,
+        opts: { olderThan: Date; batchSize: number },
+    ): Promise<number> {
+        const repo = this.connection.getRepository(ctx, PriceList);
+        let totalPurged = 0;
+        // Outer loop drains the cohort. Each iteration pulls one batch
+        // worth of expired IDs and deletes them in a transaction. If a
+        // batch fails or the process is killed, the transaction rolls
+        // back; the next tick re-selects the same IDs (they're still
+        // in DB) and tries again.
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            const candidateIds = await repo
+                .createQueryBuilder('pl')
+                .select('pl.id', 'id')
+                .where('pl.deletedAt IS NOT NULL')
+                .andWhere('pl.deletedAt < :cutoff', { cutoff: opts.olderThan })
+                .orderBy('pl.deletedAt', 'ASC')
+                .limit(opts.batchSize)
+                .getRawMany<{ id: ID }>();
+            if (candidateIds.length === 0) {
+                break;
+            }
+            await this.connection.rawConnection.transaction(async manager => {
+                await manager
+                    .getRepository(PriceList)
+                    .createQueryBuilder()
+                    .delete()
+                    .where('id IN (:...ids)', {
+                        ids: candidateIds.map(r => r.id),
+                    })
+                    .execute();
+            });
+            totalPurged += candidateIds.length;
+            // Defensive: if a batch came back smaller than batchSize it
+            // means we've drained the cohort — short-circuit instead of
+            // spinning on an empty subsequent query.
+            if (candidateIds.length < opts.batchSize) {
+                break;
+            }
+        }
+        return totalPurged;
     }
 
     // === Channel sharing — splits the binding into two writes ===

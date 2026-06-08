@@ -58,7 +58,7 @@ msgstr ""
 msgid "{totalItems} total"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:64
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:138
 msgid "Absolute"
 msgstr ""
 
@@ -161,7 +161,7 @@ msgstr ""
 msgid "Channel memberships"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:109
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:192
 msgid "Channels"
 msgstr ""
 
@@ -178,7 +178,7 @@ msgstr ""
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:211
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:120
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:36
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:41
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:108
 msgid "Code"
 msgstr ""
 
@@ -258,6 +258,10 @@ msgstr ""
 msgid "Deleted {succeeded} pricelists"
 msgstr ""
 
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:173
+msgid "Deleted at"
+msgstr ""
+
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:234
 msgid "Description"
 msgstr ""
@@ -307,12 +311,12 @@ msgid "Edit"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:274
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:75
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:149
 msgid "Enabled"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:289
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:90
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:164
 msgid "Ends"
 msgstr ""
 
@@ -394,6 +398,10 @@ msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:109
 msgid "Failed to remove variant"
+msgstr ""
+
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:52
+msgid "Failed to restore pricelist"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:118
@@ -499,7 +507,7 @@ msgstr ""
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:227
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:132
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:45
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:50
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:124
 msgid "Name"
 msgstr ""
 
@@ -625,11 +633,15 @@ msgstr ""
 #~ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:297
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:99
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:182
 msgid "Origin channel"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:63
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:117
+msgid "Pending deletion"
+msgstr ""
+
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:137
 msgid "Percentage"
 msgstr ""
 
@@ -680,6 +692,10 @@ msgstr ""
 msgid "Pricelist Groups"
 msgstr ""
 
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:98
+msgid "Pricelist is already active."
+msgstr ""
+
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:191
 msgid "Pricelist item"
 msgstr ""
@@ -688,7 +704,11 @@ msgstr ""
 msgid "PriceList not found."
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:24
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:37
+msgid "Pricelist restored"
+msgstr ""
+
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:61
 msgid "Pricelists"
 msgstr ""
 
@@ -701,7 +721,7 @@ msgstr ""
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:264
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:138
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:48
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:72
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:146
 msgid "Priority"
 msgstr ""
 
@@ -743,6 +763,10 @@ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:377
 msgid "Remove tier"
+msgstr ""
+
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:88
+msgid "Restore"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:241
@@ -797,6 +821,10 @@ msgstr ""
 msgid "Shared to channel"
 msgstr ""
 
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:224
+msgid "Show pending deletion"
+msgstr ""
+
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:302
 #~ msgid "Showing {0}–{1} of {totalItems}"
 #~ msgstr ""
@@ -810,7 +838,7 @@ msgstr ""
 #~ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:281
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:81
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:155
 msgid "Starts"
 msgstr ""
 
@@ -878,8 +906,12 @@ msgstr ""
 #~ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:181
-msgid "The pricelist will be soft-deleted. Items remain in the database but become invisible. This cannot be undone from the dashboard."
+msgid "The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable \"Show pending deletion\" on the list page during that window to restore."
 msgstr ""
+
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:181
+#~ msgid "The pricelist will be soft-deleted. Items remain in the database but become invisible. This cannot be undone from the dashboard."
+#~ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:355
 msgid "The pricelist will no longer be visible on the target channel. Items remain intact."
@@ -893,7 +925,7 @@ msgstr ""
 msgid "Tiers"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:69
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:143
 msgid "Timezone"
 msgstr ""
 
@@ -940,7 +972,7 @@ msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:129
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:242
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:53
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:127
 msgid "Value type"
 msgstr ""
 

@@ -58,7 +58,7 @@ msgstr "—"
 msgid "{totalItems} total"
 msgstr "{totalItems} au total"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:64
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:138
 msgid "Absolute"
 msgstr "Absolu"
 
@@ -161,7 +161,7 @@ msgstr "Canal"
 msgid "Channel memberships"
 msgstr "Appartenances aux canaux"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:109
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:192
 msgid "Channels"
 msgstr "Canaux"
 
@@ -178,7 +178,7 @@ msgstr "Effacer la cellule"
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:211
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:120
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:36
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:41
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:108
 msgid "Code"
 msgstr "Code"
 
@@ -258,6 +258,10 @@ msgstr "{succeeded} groupes supprimés"
 msgid "Deleted {succeeded} pricelists"
 msgstr "{succeeded} grilles tarifaires supprimées"
 
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:173
+msgid "Deleted at"
+msgstr "Supprimée le"
+
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:234
 msgid "Description"
 msgstr "Description"
@@ -307,12 +311,12 @@ msgid "Edit"
 msgstr "Modifier"
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:274
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:75
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:149
 msgid "Enabled"
 msgstr "Activée"
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:289
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:90
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:164
 msgid "Ends"
 msgstr "Fin"
 
@@ -395,6 +399,10 @@ msgstr "Échec du retrait du groupe de clients"
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:109
 msgid "Failed to remove variant"
 msgstr "Échec du retrait de la variante"
+
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:52
+msgid "Failed to restore pricelist"
+msgstr "Échec de la restauration de la grille tarifaire"
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:118
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:79
@@ -499,7 +507,7 @@ msgstr "Verrouillé après création."
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:227
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:132
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:45
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:50
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:124
 msgid "Name"
 msgstr "Nom"
 
@@ -625,11 +633,15 @@ msgstr "origine"
 #~ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:297
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:99
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:182
 msgid "Origin channel"
 msgstr "Canal d'origine"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:63
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:117
+msgid "Pending deletion"
+msgstr "En attente de suppression"
+
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:137
 msgid "Percentage"
 msgstr "Pourcentage"
 
@@ -680,6 +692,10 @@ msgstr "Grille tarifaire supprimée"
 msgid "Pricelist Groups"
 msgstr "Groupes de grilles tarifaires"
 
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:98
+msgid "Pricelist is already active."
+msgstr "La grille tarifaire est déjà active."
+
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:191
 msgid "Pricelist item"
 msgstr "Article de grille tarifaire"
@@ -688,7 +704,11 @@ msgstr "Article de grille tarifaire"
 msgid "PriceList not found."
 msgstr "Grille tarifaire introuvable."
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:24
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:37
+msgid "Pricelist restored"
+msgstr "Grille tarifaire restaurée"
+
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:61
 msgid "Pricelists"
 msgstr "Grilles tarifaires"
 
@@ -701,7 +721,7 @@ msgstr "Grilles tarifaires"
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:264
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:138
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:48
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:72
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:146
 msgid "Priority"
 msgstr "Priorité"
 
@@ -744,6 +764,10 @@ msgstr "Retirer de la grille tarifaire"
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:377
 msgid "Remove tier"
 msgstr "Retirer le palier"
+
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:88
+msgid "Restore"
+msgstr "Restaurer"
 
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:241
 msgid "Rows are currencies, columns are quantity tiers. Empty cells mean no price is defined for that combination."
@@ -797,6 +821,10 @@ msgstr "Partager vers un canal"
 msgid "Shared to channel"
 msgstr "Partagée vers le canal"
 
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:224
+msgid "Show pending deletion"
+msgstr "Afficher les suppressions en attente"
+
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:302
 #~ msgid "Showing {0}–{1} of {totalItems}"
 #~ msgstr "Affichage {0}–{1} sur {totalItems}"
@@ -810,7 +838,7 @@ msgstr "Partagée vers le canal"
 #~ msgstr "Clients spécifiques ({0})"
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:281
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:81
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:155
 msgid "Starts"
 msgstr "Début"
 
@@ -878,8 +906,12 @@ msgstr "La combinaison variante + devise + quantité seuil doit être unique au 
 #~ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:181
-msgid "The pricelist will be soft-deleted. Items remain in the database but become invisible. This cannot be undone from the dashboard."
-msgstr "La grille tarifaire sera supprimée logiquement. Les articles restent en base mais deviennent invisibles. Cette action est irréversible depuis le tableau de bord."
+msgid "The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable \"Show pending deletion\" on the list page during that window to restore."
+msgstr "La grille tarifaire sera marquée pour suppression et masquée de la liste. Une tâche planifiée la supprime définitivement après un délai de grâce (1h par défaut). Activez « Afficher les suppressions en attente » sur la liste pendant ce délai pour restaurer."
+
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:181
+#~ msgid "The pricelist will be soft-deleted. Items remain in the database but become invisible. This cannot be undone from the dashboard."
+#~ msgstr "La grille tarifaire sera supprimée logiquement. Les articles restent en base mais deviennent invisibles. Cette action est irréversible depuis le tableau de bord."
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:355
 msgid "The pricelist will no longer be visible on the target channel. Items remain intact."
@@ -893,7 +925,7 @@ msgstr "Cette grille tarifaire a été créée sur le canal {originChannelCode}.
 msgid "Tiers"
 msgstr "Paliers"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:69
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:143
 msgid "Timezone"
 msgstr "Fuseau horaire"
 
@@ -940,7 +972,7 @@ msgstr "Utilisez « Partager vers un canal » ci-dessus pour rendre cette grille
 
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:129
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:242
-#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:53
+#: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:127
 msgid "Value type"
 msgstr "Type de valeur"
 

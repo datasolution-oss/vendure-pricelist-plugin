@@ -13,6 +13,7 @@ export const priceListsListQuery = graphql(/* GraphQL */ `
         enabled
         startDate
         endDate
+        deletedAt
         originChannel {
           id
           code

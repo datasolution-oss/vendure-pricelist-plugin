@@ -178,7 +178,7 @@ export function PriceListDetailPage() {
                     />
                     <ConfirmationDialog
                         title={t`Delete this pricelist?`}
-                        description={t`The pricelist will be soft-deleted. Items remain in the database but become invisible. This cannot be undone from the dashboard.`}
+                        description={t`The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable "Show pending deletion" on the list page during that window to restore.`}
                         confirmText={t`Delete`}
                         onConfirm={() => deleteMutation.mutate()}
                     >
