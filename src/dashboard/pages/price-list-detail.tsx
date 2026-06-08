@@ -47,7 +47,7 @@ import {
 } from '../gql/mutations';
 import { priceListDetailQuery } from '../gql/queries';
 import type { PriceListDetailResult } from '../gql/types';
-import { useIsEditable } from '../lib/use-is-editable';
+import { useIsEditable } from '../hooks/use-is-editable';
 
 export function PriceListDetailPage() {
     const { t } = useLingui();
