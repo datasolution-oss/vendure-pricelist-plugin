@@ -1,13 +1,3 @@
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from '@/vdb/components/ui/alert-dialog.js';
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
 import {
@@ -15,15 +5,17 @@ import {
     HoverCardContent,
     HoverCardTrigger,
 } from '@/vdb/components/ui/hover-card.js';
+import { DataTableBulkActionItem } from '@/vdb/components/data-table/data-table-bulk-action-item.js';
 import { Money } from '@/vdb/components/data-display/money.js';
 import { PaginatedListDataTable } from '@/vdb/components/shared/paginated-list-data-table.js';
+import { BulkActionComponent } from '@/vdb/framework/extension-api/types/data-table.js';
 import { api } from '@/vdb/graphql/api.js';
+import { usePaginatedList } from '@/vdb/hooks/use-paginated-list.js';
 import { useLingui } from '@lingui/react/macro';
 import { useNavigate } from '@tanstack/react-router';
 import { ColumnFiltersState, SortingState } from '@tanstack/react-table';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Pencil, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import { savePriceListVariantPivotMutation } from '../gql/mutations';
@@ -63,13 +55,12 @@ const HOVER_OPEN_DELAY_MS = 150;
  *     Currencies opens a small list of the currency codes; hovering
  *     Tiers opens the full currency × tier pivot with values. Both use
  *     Vendure's `HoverCard` primitive (same as the main nav).
- *   - Actions: standard Vendure row-actions column — passed via
- *     `rowActions`, which `PaginatedListDataTable` auto-renders as a
- *     three-dot dropdown labeled `Actions` (iso with every other list
- *     surface in the dashboard). Delete is wired to a separately
- *     controlled `AlertDialog` because the dropdown closes on click —
- *     a self-contained `ConfirmationDialog` (which is its own
- *     trigger) wouldn't survive that.
+ *   - Actions: standard Vendure dropdown (3-dots). Single rowAction
+ *     "Edit". Delete is exposed via `bulkActions` — `PaginatedListDataTable`
+ *     auto-renders bulkActions inside the per-row dropdown as well
+ *     (with `selection: [row.original]`), so the same code path handles
+ *     both single-row and multi-row delete, with `DataTableBulkActionItem`'s
+ *     built-in confirmation dialog.
  */
 export function PriceListItemsGrid({
     priceListId,
@@ -79,36 +70,65 @@ export function PriceListItemsGrid({
     disabled,
 }: Readonly<PriceListItemsGridProps>) {
     const { t } = useLingui();
-    const queryClient = useQueryClient();
     const navigate = useNavigate();
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [filters, setFilters] = useState<ColumnFiltersState>([]);
-    const [deleteCandidate, setDeleteCandidate] = useState<VariantRef | null>(null);
+    // PaginatedListDataTable's internal cache is keyed on its
+    // `PaginatedListDataTableKey` constant + the DocumentNode, not on
+    // the operation name string — so a predicate match by string
+    // substring doesn't work. We use `registerRefresher` instead: the
+    // table hands us its own refetch function on mount; we call it
+    // after mutations (Add dialog onAdded) to trigger a fresh fetch.
+    const refresh = useRef<() => void>(() => {});
 
-    const deleteMutation = useMutation({
-        mutationFn: (variantId: string) =>
-            api.mutate(savePriceListVariantPivotMutation, {
-                input: { priceListId, productVariantId: variantId, rows: [] },
-            } as any),
-        onSuccess: () => {
-            toast.success(t`Variant removed`);
-            queryClient.invalidateQueries({
-                predicate: q =>
-                    Array.isArray(q.queryKey) &&
-                    q.queryKey.some(
-                        seg =>
-                            typeof seg === 'string' &&
-                            seg.includes('priceListVariantSummaries'),
-                    ),
-            });
-        },
-        onError: err => {
-            console.error('[pricelist] delete variant failed:', err);
-            toast.error(t`Failed to remove variant`);
-        },
-    });
+    /**
+     * Bulk action factory: closes over `priceListId` and a refresh
+     * callback so the component (rendered by the data-table outside
+     * our render tree) can fan out the per-variant `rows: []` save
+     * and refetch on completion.
+     *
+     * Memoised on `priceListId` to keep referential stability across
+     * re-renders — the table re-mounts a bulk action if its component
+     * reference changes, which would lose any in-flight state.
+     */
+    const RemoveBulkAction: BulkActionComponent<any> = useMemo(
+        () =>
+            ({ selection, table }) => {
+                const { refetchPaginatedList } = usePaginatedList();
+                const runRemove = async () => {
+                    const results = await Promise.allSettled(
+                        selection.map((item: any) =>
+                            api.mutate(savePriceListVariantPivotMutation, {
+                                input: {
+                                    priceListId,
+                                    productVariantId: item.productVariant.id,
+                                    rows: [],
+                                },
+                            } as any),
+                        ),
+                    );
+                    const ok = results.filter(r => r.status === 'fulfilled').length;
+                    const ko = results.length - ok;
+                    if (ok > 0) toast.success(t`Removed ${ok} variant(s)`);
+                    if (ko > 0) toast.error(t`Failed to remove ${ko} variant(s)`);
+                    refetchPaginatedList();
+                    table.resetRowSelection();
+                };
+                return (
+                    <DataTableBulkActionItem
+                        requiresPermission={['UpdatePriceList']}
+                        onClick={runRemove}
+                        label={t`Remove from pricelist`}
+                        confirmationText={t`Remove ${selection.length} variant(s) from this pricelist?`}
+                        icon={Trash2}
+                        className="text-destructive"
+                    />
+                );
+            },
+        [priceListId, t],
+    );
 
     const openEdit = (variant: VariantRef) => {
         navigate({
@@ -122,6 +142,8 @@ export function PriceListItemsGrid({
             <PaginatedListDataTable
                 listQuery={priceListVariantSummariesQuery as any}
                 transformVariables={vars => ({ ...vars, priceListId })}
+                registerRefresher={fn => (refresh.current = fn)}
+                bulkActions={[[{ component: RemoveBulkAction }]]}
                 defaultVisibility={{
                     productVariant: true,
                     currencyCount: true,
@@ -138,15 +160,13 @@ export function PriceListItemsGrid({
                         ),
                         onClick: (row: any) => openEdit(row.original.productVariant),
                     },
-                    {
-                        label: (
-                            <span className="flex items-center gap-2 text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                                {t`Remove from pricelist`}
-                            </span>
-                        ),
-                        onClick: (row: any) => setDeleteCandidate(row.original.productVariant),
-                    },
+                    // No second "Remove from pricelist" rowAction here:
+                    // PaginatedListDataTable automatically renders every
+                    // `bulkActions` entry in the per-row dropdown too
+                    // (with `selection: [row.original]`), so a separate
+                    // single-row rowAction would show up as a duplicate.
+                    // The bulk action handles both single and multi-row
+                    // delete cleanly.
                 ]}
                 customizeColumns={
                     {
@@ -233,50 +253,9 @@ export function PriceListItemsGrid({
                     availableCurrencyCodes={availableCurrencyCodes}
                     defaultCurrencyCode={defaultCurrencyCode}
                     disabled={disabled}
+                    onAdded={() => refresh.current()}
                 />
             </div>
-
-            {/*
-              Controlled AlertDialog driven by `deleteCandidate`. We can't
-              use the wrapping `ConfirmationDialog` here because its
-              trigger is its child — and our actual trigger lives inside
-              a dropdown menu that closes on click, leaving no trigger
-              element mounted at the moment we'd want the confirmation
-              to appear.
-            */}
-            <AlertDialog
-                open={deleteCandidate !== null}
-                onOpenChange={open => {
-                    if (!open) setDeleteCandidate(null);
-                }}
-            >
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>
-                            {deleteCandidate
-                                ? t`Remove ${deleteCandidate.sku} from this pricelist?`
-                                : ''}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            {t`Every currency × tier price defined for this variant will be deleted. The pricelist itself stays.`}
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>{t`Cancel`}</AlertDialogCancel>
-                        <AlertDialogAction
-                            type="button"
-                            onClick={() => {
-                                if (deleteCandidate) {
-                                    deleteMutation.mutate(deleteCandidate.id);
-                                }
-                                setDeleteCandidate(null);
-                            }}
-                        >
-                            {t`Remove`}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
@@ -388,10 +367,16 @@ function CellBreakdown({ cells, valueType }: Readonly<CellBreakdownProps>) {
                     gridTemplateColumns: `auto repeat(${tiers.length}, minmax(0,1fr))`,
                 }}
             >
-                <div></div>
+                {/*
+                  Corner cell labels the column dimension: tier headers
+                  below are quantity thresholds. Single occurrence —
+                  individual tier headers stay short "≥ N" so the row
+                  reads as a clean numeric ladder.
+                */}
+                <div className="text-muted-foreground italic">{t`Qty`}</div>
                 {tiers.map(step => (
                     <div key={step} className="text-muted-foreground">
-                        {t`qty ${step}+`}
+                        {t`≥ ${step}`}
                     </div>
                 ))}
                 {currencies.map(currency => (

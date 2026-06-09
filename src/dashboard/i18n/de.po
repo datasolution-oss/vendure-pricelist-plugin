@@ -49,13 +49,18 @@ msgstr ""
 msgid "Pricelist Group"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:472
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:487
 msgid "—"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:262
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:385
 msgid "{totalItems} total"
+msgstr ""
+
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:451
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:386
+msgid "≥ {step}"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:138
@@ -76,7 +81,7 @@ msgstr ""
 msgid "Add at least one currency and one tier to start editing prices."
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:704
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:719
 msgid "Add currency"
 msgstr ""
 
@@ -92,11 +97,11 @@ msgstr ""
 msgid "Add pricelist item"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:634
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:649
 msgid "Add tier"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:670
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:685
 msgid "All channel currencies already in pivot."
 msgstr ""
 
@@ -138,7 +143,7 @@ msgstr ""
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:284
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:165
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:103
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:265
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:316
 #: src/plugins/pricelist/dashboard/components/share-to-channel-dialog.tsx:164
 msgid "Cancel"
 msgstr ""
@@ -169,7 +174,7 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:509
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:524
 msgid "Clear cell"
 msgstr ""
 
@@ -191,12 +196,12 @@ msgstr ""
 msgid "Create a pricelist on the active channel. Items, customer access, and additional translations can be added on the detail page."
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:178
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:228
 msgid "Currencies"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:213
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:367
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:382
 msgid "Currency"
 msgstr ""
 
@@ -216,10 +221,10 @@ msgstr ""
 msgid "Customers"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:341
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:392
 #: src/plugins/pricelist/dashboard/components/share-to-channel-dialog.tsx:149
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:394
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:690
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:409
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:705
 msgid "default"
 msgstr ""
 
@@ -306,7 +311,7 @@ msgstr ""
 msgid "e.g. STANDARD-EUR"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:136
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:186
 msgid "Edit"
 msgstr ""
 
@@ -320,7 +325,7 @@ msgstr ""
 msgid "Ends"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:261
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:312
 msgid "Every currency × tier price defined for this variant will be deleted. The pricelist itself stays."
 msgstr ""
 
@@ -384,6 +389,10 @@ msgstr ""
 #~ msgid "Failed to load pricelists."
 #~ msgstr ""
 
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:143
+msgid "Failed to remove {ko} variant(s)"
+msgstr ""
+
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:120
 msgid "Failed to remove customer"
 msgstr ""
@@ -396,7 +405,7 @@ msgstr ""
 #~ msgid "Failed to remove item"
 #~ msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:109
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:110
 msgid "Failed to remove variant"
 msgstr ""
 
@@ -458,7 +467,7 @@ msgstr ""
 msgid "Groups are channel-local. The new group is created on the active channel."
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:136
+#: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:144
 msgid "Item added"
 msgstr ""
 
@@ -486,7 +495,7 @@ msgstr ""
 #~ msgid "Language"
 #~ msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:213
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:263
 msgid "Last updated"
 msgstr ""
 
@@ -501,6 +510,12 @@ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:256
 msgid "Locked once created."
+msgstr ""
+
+#: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:234
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:378
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:640
+msgid "Min qty"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:120
@@ -553,7 +568,7 @@ msgstr ""
 msgid "No catalog price for {currencyCode} on this variant."
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:330
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:381
 msgid "No currencies yet."
 msgstr ""
 
@@ -589,7 +604,7 @@ msgstr ""
 #~ msgid "No pricelists yet. Use the Admin API to create one — full create UI is forthcoming."
 #~ msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:368
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:419
 msgid "No prices defined yet."
 msgstr ""
 
@@ -729,10 +744,24 @@ msgstr ""
 msgid "Product variant"
 msgstr ""
 
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:448
+#~ msgid "Qté"
+#~ msgstr ""
+
+#: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:234
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:378
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:640
+#~ msgid "Qté minimum"
+#~ msgstr ""
+
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:448
+msgid "Qty"
+msgstr ""
+
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:394
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:371
-msgid "qty {step}+"
-msgstr ""
+#~ msgid "qty {step}+"
+#~ msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/read-only-banner.tsx:20
 msgid "Read-only view"
@@ -740,20 +769,26 @@ msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:288
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:406
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:275
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:326
 msgid "Remove"
 msgstr ""
 
 #. placeholder {0}: deleteCandidate.sku
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:257
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:308
 msgid "Remove {0} from this pricelist?"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:402
+#. placeholder {0}: selection.length
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:152
+msgid "Remove {0} variant(s) from this pricelist?"
+msgstr ""
+
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:417
 msgid "Remove currency"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:145
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:151
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:195
 msgid "Remove from pricelist"
 msgstr ""
 
@@ -761,8 +796,12 @@ msgstr ""
 #~ msgid "Remove this item?"
 #~ msgstr ""
 
-#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:377
+#: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:392
 msgid "Remove tier"
+msgstr ""
+
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:142
+msgid "Removed {ok} variant(s)"
 msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:88
@@ -852,8 +891,8 @@ msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:234
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:625
-msgid "Step quantity"
-msgstr ""
+#~ msgid "Step quantity"
+#~ msgstr ""
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:356
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:368
@@ -921,7 +960,7 @@ msgstr ""
 msgid "This pricelist was created on channel {originChannelCode}. Edits are only allowed from its origin channel."
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:198
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:248
 msgid "Tiers"
 msgstr ""
 
@@ -976,11 +1015,11 @@ msgstr ""
 msgid "Value type"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:154
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:204
 msgid "Variant"
 msgstr ""
 
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:96
+#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:105
 msgid "Variant removed"
 msgstr ""
 

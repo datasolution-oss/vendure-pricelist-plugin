@@ -363,12 +363,27 @@ function PivotTable({
     return (
         <Table>
             <TableHeader>
+                {/*
+                  Two-row TableHead: a colspan top row labels the tier
+                  columns as quantity thresholds (single occurrence,
+                  not repeated on each tier). Bottom row carries the
+                  per-tier "≥ N" values and the remove-tier button.
+                */}
+                <TableRow>
+                    <TableHead className="w-[120px]" />
+                    <TableHead
+                        colSpan={tiers.length}
+                        className="text-center text-xs font-normal text-muted-foreground"
+                    >
+                        {t`Min qty`}
+                    </TableHead>
+                </TableRow>
                 <TableRow>
                     <TableHead className="w-[120px]">{t`Currency`}</TableHead>
                     {tiers.map(step => (
                         <TableHead key={step}>
                             <div className="flex items-center gap-1">
-                                <span>{t`qty ${step}+`}</span>
+                                <span>{t`≥ ${step}`}</span>
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
@@ -622,7 +637,7 @@ function AddTierControl({
                 }
                 disabled={disabled}
                 className="w-24"
-                aria-label={t`Step quantity`}
+                aria-label={t`Min qty`}
             />
             <Button
                 variant="outline"
