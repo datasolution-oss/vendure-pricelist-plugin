@@ -43,9 +43,17 @@ export class PriceListAdminResolver {
     @Allow(priceListPermission.Read)
     async priceLists(
         @Ctx() ctx: RequestContext,
-        @Args() args: { options?: { skip?: number; take?: number } },
+        @Args()
+        args: {
+            options?: { skip?: number; take?: number; includeDeleted?: boolean };
+        },
     ): Promise<PaginatedList<PriceList>> {
-        return this.priceListService.findAll(ctx, args.options);
+        // Strip `includeDeleted` off the listQueryOptions before forwarding —
+        // it isn't a column-bound field, so passing it through would
+        // confuse the ListQueryBuilder's filter/sort generator. The
+        // service consumes it from the second parameter instead.
+        const { includeDeleted, ...listOptions } = args.options ?? {};
+        return this.priceListService.findAll(ctx, listOptions, { includeDeleted });
     }
 
     @Query()
@@ -102,6 +110,16 @@ export class PriceListAdminResolver {
         @Args() args: { id: ID },
     ): Promise<DeletionResponse> {
         return this.priceListService.softDelete(ctx, args.id);
+    }
+
+    @Mutation()
+    @Transaction()
+    @Allow(priceListPermission.Update)
+    async restorePriceList(
+        @Ctx() ctx: RequestContext,
+        @Args() args: { id: ID },
+    ): Promise<PriceList> {
+        return this.priceListService.restore(ctx, args.id);
     }
 
     @Mutation()

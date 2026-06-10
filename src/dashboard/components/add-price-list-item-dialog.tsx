@@ -22,7 +22,7 @@ import { MoneyInput } from '@/vdb/components/data-input/money-input.js';
 import { ProductVariantSelector } from '@/vdb/components/shared/product-variant-selector.js';
 import { api } from '@/vdb/graphql/api.js';
 import { useLingui } from '@lingui/react/macro';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -39,6 +39,14 @@ interface AddPriceListItemDialogProps {
     availableCurrencyCodes: string[];
     defaultCurrencyCode: string;
     disabled?: boolean;
+    /**
+     * Called after a successful add. The parent grid passes its
+     * `PaginatedListDataTable` refresh function — we can't invalidate
+     * the table's react-query cache by string predicate because its
+     * queryKey is built from `PaginatedListDataTableKey` + the
+     * DocumentNode reference (no operation-name string in there).
+     */
+    onAdded?: () => void;
 }
 
 interface CatalogPriceResult {
@@ -70,9 +78,9 @@ export function AddPriceListItemDialog({
     availableCurrencyCodes,
     defaultCurrencyCode,
     disabled,
+    onAdded,
 }: Readonly<AddPriceListItemDialogProps>) {
     const { t } = useLingui();
-    const queryClient = useQueryClient();
 
     const initialCurrency =
         availableCurrencyCodes.includes(defaultCurrencyCode)
@@ -134,19 +142,11 @@ export function AddPriceListItemDialog({
             } as any),
         onSuccess: () => {
             toast.success(t`Item added`);
-            // PaginatedListDataTable generates its own query key based
-            // on the document name — we don't know it precisely here,
-            // so invalidate by substring match on any cached query that
-            // touches the variant summaries.
-            queryClient.invalidateQueries({
-                predicate: q =>
-                    Array.isArray(q.queryKey) &&
-                    q.queryKey.some(
-                        seg =>
-                            typeof seg === 'string' &&
-                            seg.includes('priceListVariantSummaries'),
-                    ),
-            });
+            // Refresh the parent grid through the callback it passed
+            // down. We can't predicate-match the data-table's
+            // queryKey by string because it's keyed on a constant +
+            // the DocumentNode reference, not on the operation name.
+            onAdded?.();
             reset();
             setOpen(false);
         },
@@ -231,7 +231,7 @@ export function AddPriceListItemDialog({
                         </div>
 
                         <div className="space-y-1.5">
-                            <Label>{t`Step quantity`}</Label>
+                            <Label>{t`Min qty`}</Label>
                             <Input
                                 type="number"
                                 min={1}

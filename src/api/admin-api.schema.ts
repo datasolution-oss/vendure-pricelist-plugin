@@ -171,6 +171,13 @@ export const adminApiExtensions = gql`
     input PriceListListOptions {
         skip: Int
         take: Int
+        """
+        When true, soft-deleted pricelists (those awaiting purge by the
+        cron task) are included in the result. Default false — the
+        canonical list view hides them. The dashboard's "Show pending
+        deletion" toggle drives this flag.
+        """
+        includeDeleted: Boolean
     }
 
     input PriceListItemListOptions {
@@ -260,7 +267,20 @@ export const adminApiExtensions = gql`
         # PriceList CRUD
         createPriceList(input: CreatePriceListInput!): PriceList!
         updatePriceList(input: UpdatePriceListInput!): PriceList!
+        """
+        Soft-deletes the pricelist (sets \`deletedAt\`). The cron task
+        \`pricelist-purge-pending-deletion\` hard-deletes it after the
+        configured grace period (default 1h). Call \`restorePriceList\`
+        any time before that to bring it back to active.
+        """
         deletePriceList(id: ID!): DeletionResponse!
+        """
+        Cancel a pending deletion: clears \`deletedAt\` so the cron task
+        no longer picks the pricelist up. No-op if the pricelist is
+        already active (idempotent). Errors if called from a channel
+        other than the pricelist's origin.
+        """
+        restorePriceList(id: ID!): PriceList!
 
         # Items
         addPriceListItem(input: CreatePriceListItemInput!): PriceListItem!

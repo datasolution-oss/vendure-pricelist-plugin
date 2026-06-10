@@ -1,11 +1,5 @@
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
-import {
-    Card,
-    CardContent,
-    CardHeader,
-    CardTitle,
-} from '@/vdb/components/ui/card.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Label } from '@/vdb/components/ui/label.js';
 import { Switch } from '@/vdb/components/ui/switch.js';
@@ -47,7 +41,7 @@ import {
 } from '../gql/mutations';
 import { priceListDetailQuery } from '../gql/queries';
 import type { PriceListDetailResult } from '../gql/types';
-import { useIsEditable } from '../lib/use-is-editable';
+import { useIsEditable } from '../hooks/use-is-editable';
 
 export function PriceListDetailPage() {
     const { t } = useLingui();
@@ -184,7 +178,7 @@ export function PriceListDetailPage() {
                     />
                     <ConfirmationDialog
                         title={t`Delete this pricelist?`}
-                        description={t`The pricelist will be soft-deleted. Items remain in the database but become invisible. This cannot be undone from the dashboard.`}
+                        description={t`The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable "Show pending deletion" on the list page during that window to restore.`}
                         confirmText={t`Delete`}
                         onConfirm={() => deleteMutation.mutate()}
                     >
@@ -204,204 +198,196 @@ export function PriceListDetailPage() {
             </PageActionBar>
 
             <PageLayout>
-                <PageBlock column="main" blockId="pricelist-summary">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{t`Summary`}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <FormRow label={t`Code`}>
-                                <Input
-                                    value={code}
-                                    onChange={e => setCode(e.target.value)}
-                                    disabled={!isEditable}
-                                />
-                            </FormRow>
-                            {/*
-                              Name and description are Translatable on the
-                              entity. Editing them writes to the translation
-                              row for the active content language of the
-                              dashboard — no separate "Translations" block.
-                              The active language is already shown by the
-                              channel-language picker in the top bar, so the
-                              labels stay plain (no `(FR)` / `(EN)` suffix).
-                            */}
-                            <FormRow label={t`Name`}>
-                                <Input
-                                    value={name}
-                                    onChange={e => setName(e.target.value)}
-                                    disabled={!isEditable}
-                                />
-                            </FormRow>
-                            <FormRow label={t`Description`}>
-                                <Textarea
-                                    value={description}
-                                    onChange={e => setDescription(e.target.value)}
-                                    disabled={!isEditable}
-                                    rows={3}
-                                />
-                            </FormRow>
-                            <FormRow label={t`Value type`}>
-                                <div className="flex items-center gap-2">
-                                    <Badge
-                                        variant={
-                                            pl.valueType === 'PERCENTAGE'
-                                                ? 'secondary'
-                                                : 'outline'
-                                        }
-                                    >
-                                        {pl.valueType === 'PERCENTAGE'
-                                            ? t`Percentage discounts`
-                                            : t`Absolute prices`}
-                                    </Badge>
-                                    <span className="text-xs text-muted-foreground">
-                                        {t`Locked once created.`}
-                                    </span>
-                                </div>
-                            </FormRow>
-                            {/* Timezone field intentionally hidden — see plan
-                                Stage 1D §"timezone on hold". The DB column
-                                still exists (defaults to UTC); re-enable by
-                                mounting TimezoneSelect when Stage-2 lookup
-                                consumes it. */}
-                            <FormRow label={t`Priority`}>
-                                <Input
-                                    type="number"
-                                    value={priority}
-                                    onChange={e =>
-                                        setPriority(parseInt(e.target.value, 10) || 0)
+                {/*
+                  PageBlock already renders its own Card+CardHeader+CardContent
+                  (with optional title/description props). Earlier code wrapped
+                  the children in another Card which produced a visible double
+                  border. We now pass `title` to PageBlock and put the form
+                  content directly inside — single bordered card per block,
+                  iso with the rest of Vendure.
+                */}
+                <PageBlock column="main" blockId="pricelist-summary" title={t`Summary`}>
+                    <div className="space-y-4">
+                        <FormRow label={t`Code`}>
+                            <Input
+                                value={code}
+                                onChange={e => setCode(e.target.value)}
+                                disabled={!isEditable}
+                            />
+                        </FormRow>
+                        {/*
+                          Name and description are Translatable on the
+                          entity. Editing them writes to the translation row
+                          for the active content language of the dashboard —
+                          no separate "Translations" block. The active
+                          language is already shown by the channel-language
+                          picker in the top bar, so the labels stay plain
+                          (no `(FR)` / `(EN)` suffix).
+                        */}
+                        <FormRow label={t`Name`}>
+                            <Input
+                                value={name}
+                                onChange={e => setName(e.target.value)}
+                                disabled={!isEditable}
+                            />
+                        </FormRow>
+                        <FormRow label={t`Description`}>
+                            <Textarea
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                disabled={!isEditable}
+                                rows={3}
+                            />
+                        </FormRow>
+                        <FormRow label={t`Value type`}>
+                            <div className="flex items-center gap-2">
+                                <Badge
+                                    variant={
+                                        pl.valueType === 'PERCENTAGE'
+                                            ? 'secondary'
+                                            : 'outline'
                                     }
-                                    disabled={!isEditable}
-                                />
-                            </FormRow>
-                            <FormRow label={t`Enabled`}>
-                                <Switch
-                                    checked={enabled}
-                                    onCheckedChange={setEnabled}
-                                    disabled={!isEditable}
-                                />
-                            </FormRow>
-                            <FormRow label={t`Starts`}>
-                                <Input
-                                    type="datetime-local"
-                                    value={startDate}
-                                    onChange={e => setStartDate(e.target.value)}
-                                    disabled={!isEditable}
-                                />
-                            </FormRow>
-                            <FormRow label={t`Ends`}>
-                                <Input
-                                    type="datetime-local"
-                                    value={endDate}
-                                    onChange={e => setEndDate(e.target.value)}
-                                    disabled={!isEditable}
-                                />
-                            </FormRow>
-                            <FormRow label={t`Origin channel`}>
-                                <code className="text-sm">{pl.originChannel.code}</code>
-                            </FormRow>
-                        </CardContent>
-                    </Card>
-                </PageBlock>
-
-                <PageBlock column="main" blockId="pricelist-items">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{t`Items`}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <PriceListItemsGrid
-                                priceListId={pl.id}
-                                valueType={pl.valueType}
-                                availableCurrencyCodes={
-                                    pl.originChannel.availableCurrencyCodes
-                                }
-                                defaultCurrencyCode={
-                                    pl.originChannel.defaultCurrencyCode
+                                >
+                                    {pl.valueType === 'PERCENTAGE'
+                                        ? t`Percentage discounts`
+                                        : t`Absolute prices`}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                    {t`Locked once created.`}
+                                </span>
+                            </div>
+                        </FormRow>
+                        {/* Timezone field intentionally hidden — see plan
+                            Stage 1D §"timezone on hold". The DB column still
+                            exists (defaults to UTC); re-enable by mounting
+                            TimezoneSelect when Stage-2 lookup consumes it. */}
+                        <FormRow label={t`Priority`}>
+                            <Input
+                                type="number"
+                                value={priority}
+                                onChange={e =>
+                                    setPriority(parseInt(e.target.value, 10) || 0)
                                 }
                                 disabled={!isEditable}
                             />
-                        </CardContent>
-                    </Card>
+                        </FormRow>
+                        <FormRow label={t`Enabled`}>
+                            <Switch
+                                checked={enabled}
+                                onCheckedChange={setEnabled}
+                                disabled={!isEditable}
+                            />
+                        </FormRow>
+                        <FormRow label={t`Starts`}>
+                            <Input
+                                type="datetime-local"
+                                value={startDate}
+                                onChange={e => setStartDate(e.target.value)}
+                                disabled={!isEditable}
+                            />
+                        </FormRow>
+                        <FormRow label={t`Ends`}>
+                            <Input
+                                type="datetime-local"
+                                value={endDate}
+                                onChange={e => setEndDate(e.target.value)}
+                                disabled={!isEditable}
+                            />
+                        </FormRow>
+                        <FormRow label={t`Origin channel`}>
+                            <code className="text-sm">{pl.originChannel.code}</code>
+                        </FormRow>
+                    </div>
                 </PageBlock>
 
-                <PageBlock column="main" blockId="pricelist-channels">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>{t`Channel memberships`}</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {pl.groupMemberships.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                    {t`Not bound to any channel/group yet.`}
-                                </p>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>{t`Channel`}</TableHead>
-                                            <TableHead>{t`Group`}</TableHead>
-                                            <TableHead></TableHead>
-                                            <TableHead className="text-right"></TableHead>
+                <PageBlock column="main" blockId="pricelist-items" title={t`Items`}>
+                    <PriceListItemsGrid
+                        priceListId={pl.id}
+                        valueType={pl.valueType}
+                        availableCurrencyCodes={pl.originChannel.availableCurrencyCodes}
+                        defaultCurrencyCode={pl.originChannel.defaultCurrencyCode}
+                        disabled={!isEditable}
+                    />
+                </PageBlock>
+
+                <PageBlock
+                    column="main"
+                    blockId="pricelist-channels"
+                    title={t`Channel memberships`}
+                >
+                    {pl.groupMemberships.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            {t`Not bound to any channel/group yet.`}
+                        </p>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>{t`Channel`}</TableHead>
+                                    <TableHead>{t`Group`}</TableHead>
+                                    <TableHead></TableHead>
+                                    <TableHead className="text-right"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {pl.groupMemberships.map(m => {
+                                    const isOriginRow =
+                                        m.group.channel.id === pl.originChannel.id;
+                                    return (
+                                        <TableRow key={m.id}>
+                                            <TableCell className="font-mono">
+                                                {m.group.channel.code}
+                                            </TableCell>
+                                            <TableCell className="font-mono">
+                                                {m.group.code}
+                                            </TableCell>
+                                            <TableCell>
+                                                {isOriginRow && (
+                                                    <Badge variant="success">
+                                                        {t`origin`}
+                                                    </Badge>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                {!isOriginRow && (
+                                                    <ConfirmationDialog
+                                                        title={t`Stop sharing on this channel?`}
+                                                        description={t`The pricelist will no longer be visible on the target channel. Items remain intact.`}
+                                                        confirmText={t`Stop sharing`}
+                                                        onConfirm={() =>
+                                                            unshareMutation.mutate(
+                                                                m.group.channel.id,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            disabled={!isEditable}
+                                                        >
+                                                            {t`Stop sharing`}
+                                                        </Button>
+                                                    </ConfirmationDialog>
+                                                )}
+                                            </TableCell>
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {pl.groupMemberships.map(m => {
-                                            const isOriginRow =
-                                                m.group.channel.id === pl.originChannel.id;
-                                            return (
-                                                <TableRow key={m.id}>
-                                                    <TableCell className="font-mono">
-                                                        {m.group.channel.code}
-                                                    </TableCell>
-                                                    <TableCell className="font-mono">
-                                                        {m.group.code}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {isOriginRow && (
-                                                            <Badge variant="success">
-                                                                {t`origin`}
-                                                            </Badge>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right">
-                                                        {!isOriginRow && (
-                                                            <ConfirmationDialog
-                                                                title={t`Stop sharing on this channel?`}
-                                                                description={t`The pricelist will no longer be visible on the target channel. Items remain intact.`}
-                                                                confirmText={t`Stop sharing`}
-                                                                onConfirm={() =>
-                                                                    unshareMutation.mutate(
-                                                                        m.group.channel.id,
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    disabled={!isEditable}
-                                                                >
-                                                                    {t`Stop sharing`}
-                                                                </Button>
-                                                            </ConfirmationDialog>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            )}
-                            {sharedChannels.length === 0 && (
-                                <p className="mt-2 text-xs text-muted-foreground">
-                                    {t`Use "Share to channel" above to make this pricelist available on other channels.`}
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    )}
+                    {sharedChannels.length === 0 && (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                            {t`Use "Share to channel" above to make this pricelist available on other channels.`}
+                        </p>
+                    )}
                 </PageBlock>
 
-                <PageBlock column="main" blockId="pricelist-access">
+                <PageBlock
+                    column="main"
+                    blockId="pricelist-access"
+                    title={t`Customer access`}
+                >
                     <PriceListAccessBlock
                         priceListId={pl.id}
                         assignedToEveryone={pl.assignedToEveryone}

@@ -1,6 +1,7 @@
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
-import { Card, CardContent, CardHeader, CardTitle } from '@/vdb/components/ui/card.js';
+// Card+CardHeader+CardContent dropped — `PageBlock` already renders
+// those, and double-wrapping produced a visible double border.
 import { Input } from '@/vdb/components/ui/input.js';
 import {
     Select,
@@ -31,7 +32,7 @@ import {
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { Plus, Save, X } from 'lucide-react';
+import { Plus, Save, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -45,7 +46,7 @@ import type {
     PriceListDetailResult,
     PriceListValueType,
 } from '../gql/types';
-import { useIsEditable } from '../lib/use-is-editable';
+import { useIsEditable } from '../hooks/use-is-editable';
 
 interface VariantItemRow {
     id: string;
@@ -217,29 +218,29 @@ export function PriceListItemDetailPage() {
             </PageActionBar>
 
             <PageLayout>
-                <PageBlock column="main" blockId="pricelist-item-pivot">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-3">
-                                {t`Price pivot`}
-                                <Badge
-                                    variant={
-                                        valueType === 'PERCENTAGE'
-                                            ? 'secondary'
-                                            : 'outline'
-                                    }
-                                >
-                                    {valueType === 'PERCENTAGE'
-                                        ? t`Percentage discounts`
-                                        : t`Absolute prices`}
-                                </Badge>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <p className="text-xs text-muted-foreground">
-                                {t`Rows are currencies, columns are quantity tiers. Empty cells mean no price is defined for that combination.`}
-                            </p>
-                            <PivotTable
+                <PageBlock
+                    column="main"
+                    blockId="pricelist-item-pivot"
+                    title={
+                        <span className="flex items-center gap-3">
+                            {t`Price pivot`}
+                            <Badge
+                                variant={
+                                    valueType === 'PERCENTAGE' ? 'secondary' : 'outline'
+                                }
+                            >
+                                {valueType === 'PERCENTAGE'
+                                    ? t`Percentage discounts`
+                                    : t`Absolute prices`}
+                            </Badge>
+                        </span>
+                    }
+                >
+                    <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground">
+                            {t`Rows are currencies, columns are quantity tiers. Empty cells mean no price is defined for that combination.`}
+                        </p>
+                        <PivotTable
                                 currencies={currencies}
                                 tiers={tiers}
                                 cells={cells}
@@ -309,9 +310,8 @@ export function PriceListItemDetailPage() {
                                         )
                                     }
                                 />
-                            </div>
-                        </CardContent>
-                    </Card>
+                        </div>
+                    </div>
                 </PageBlock>
             </PageLayout>
         </Page>
@@ -363,12 +363,27 @@ function PivotTable({
     return (
         <Table>
             <TableHeader>
+                {/*
+                  Two-row TableHead: a colspan top row labels the tier
+                  columns as quantity thresholds (single occurrence,
+                  not repeated on each tier). Bottom row carries the
+                  per-tier "≥ N" values and the remove-tier button.
+                */}
+                <TableRow>
+                    <TableHead className="w-[120px]" />
+                    <TableHead
+                        colSpan={tiers.length}
+                        className="text-center text-xs font-normal text-muted-foreground"
+                    >
+                        {t`Min qty`}
+                    </TableHead>
+                </TableRow>
                 <TableRow>
                     <TableHead className="w-[120px]">{t`Currency`}</TableHead>
                     {tiers.map(step => (
                         <TableHead key={step}>
                             <div className="flex items-center gap-1">
-                                <span>{t`qty ${step}+`}</span>
+                                <span>{t`≥ ${step}`}</span>
                                 <Button
                                     variant="ghost"
                                     size="icon-sm"
@@ -376,7 +391,7 @@ function PivotTable({
                                     onClick={() => onRemoveTier(step)}
                                     aria-label={t`Remove tier`}
                                 >
-                                    <X className="h-3 w-3" />
+                                    <Trash2 className="h-3 w-3 text-destructive" />
                                 </Button>
                             </div>
                         </TableHead>
@@ -401,7 +416,7 @@ function PivotTable({
                                     onClick={() => onRemoveCurrency(currency)}
                                     aria-label={t`Remove currency`}
                                 >
-                                    <X className="h-3 w-3" />
+                                    <Trash2 className="h-3 w-3 text-destructive" />
                                 </Button>
                             </div>
                         </TableCell>
@@ -508,7 +523,7 @@ function PivotCell({
                 onClick={() => onChange(null)}
                 aria-label={t`Clear cell`}
             >
-                <X className="h-3 w-3" />
+                <Trash2 className="h-3 w-3 text-destructive" />
             </Button>
         </div>
     );
@@ -622,7 +637,7 @@ function AddTierControl({
                 }
                 disabled={disabled}
                 className="w-24"
-                aria-label={t`Step quantity`}
+                aria-label={t`Min qty`}
             />
             <Button
                 variant="outline"

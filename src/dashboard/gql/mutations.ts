@@ -31,6 +31,20 @@ export const deletePriceListMutation = graphql(/* GraphQL */ `
     }
 `);
 
+/**
+ * Cancel a pending deletion (Stage 1E). Clears `deletedAt` so the
+ * `pricelist-purge-pending-deletion` cron task stops considering the
+ * pricelist a purge candidate.
+ */
+export const restorePriceListMutation = graphql(/* GraphQL */ `
+    mutation RestorePriceList($id: ID!) {
+        restorePriceList(id: $id) {
+            id
+            deletedAt
+        }
+    }
+`);
+
 // === Items ===
 
 export const addPriceListItemMutation = graphql(/* GraphQL */ `

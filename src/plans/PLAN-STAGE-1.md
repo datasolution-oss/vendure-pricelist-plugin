@@ -84,6 +84,78 @@ caught after batch 1 shipped:
 These nine items were applied in the first revision pass and remain in
 the current code.
 
+### Stage 1E — Soft-delete with cron-driven purge (2026-06-08)
+
+Direction from PO: replace immediate soft-delete with a two-phase
+"pending deletion → cron purge" workflow. A merchandiser-initiated
+Delete moves the list into a grace period; a scheduled task hard-
+deletes it after the period expires; the merchandiser can call Restore
+at any time before purge.
+
+Five changes:
+
+1. **No schema migration.** The existing `deletedAt` column (from
+   Vendure's `SoftDeletable` interface) is reused: `deletedAt != null`
+   now means "pending deletion" rather than "permanently soft-deleted".
+   Stage 2 lookup will keep its existing exclusion (`deletedAt IS NULL`
+   predicate).
+
+2. **`PriceListService.restore(ctx, id)`.** Sets `deletedAt = null`,
+   only callable from the origin channel (mirrors the existing edit
+   guard `ERR_PRICELIST_READONLY_NON_ORIGIN_CHANNEL`). Idempotent — no
+   error on an already-active list.
+
+3. **`PriceListService.purgePending(ctx, { olderThan, batchSize })`.**
+   Hard-deletes pricelists whose `deletedAt < olderThan`, in
+   transactional batches. The cascade FK constraints on every
+   `price_list` child table (`price_list_item`, translations, group
+   memberships, channel pivots, customer/group pivots) guarantee the
+   delete fans out cleanly. Idempotent and interruption-safe — an
+   SIGTERM mid-batch rolls back the in-flight batch only, and the
+   next tick re-selects the same expired IDs.
+
+4. **Cron task `pricelist-purge-pending-deletion`** in
+   `scheduled-tasks/purge-pending-deletion-task.ts`. Defaults: runs
+   every 15 minutes, grace period 1 hour, batch size 100 rows. All
+   knobs configurable via `PricelistPlugin.init({ ... })`:
+
+   - `purgePendingDeletionAfterMs` (default `3_600_000`)
+   - `purgePendingDeletionSchedule` (default `cron.every(15).minutes()`)
+   - `purgePendingDeletionBatchSize` (default `100`)
+
+   Passing `purgePendingDeletionSchedule: null` opts out of the task
+   entirely.
+
+5. **SDL + dashboard surface.**
+
+   - `PriceListListOptions.includeDeleted: Boolean` (default false)
+     — toggled by a dashboard switch "Show pending deletion".
+   - `restorePriceList(id): PriceList!` mutation.
+   - List page: badge "Pending deletion" on each pending row, a
+     `Restore` action in the actions dropdown (idempotent, no-ops
+     with a hint toast if the row is already active), and a hidden
+     `Deleted at` column the user can opt into.
+   - Detail page Delete dialog text rewritten to mention the grace
+     period and the restore path.
+
+**Files touched (incremental over 1D):**
+
+- `types.ts` — three new options
+- `pricelist.plugin.ts` — pushes the scheduled task in `configuration:`
+- `scheduled-tasks/purge-pending-deletion-task.ts` (new)
+- `services/price-list.service.ts` — `findAll(includeDeleted)`,
+  `restore`, `purgePending`
+- `api/admin-api.schema.ts` — `includeDeleted`, `restorePriceList`
+- `api/price-list.admin-resolver.ts` — Restore mutation + strip
+  `includeDeleted` off listQueryOptions before forwarding
+- `dashboard/gql/queries.ts` — select `deletedAt` on list query
+- `dashboard/gql/mutations.ts` — `restorePriceListMutation`
+- `dashboard/pages/price-list-list.tsx` — toggle, badge, action
+- `dashboard/pages/price-list-detail.tsx` — Delete dialog copy
+- `dashboard/i18n/fr.po` — 9 new strings translated
+
+**Migration:** none. SDL-additive / dashboard-only.
+
 ### Stage 1D refactor — Vendure-compliance pass + pivot editor (2026-06-04)
 
 Direction from PO/lead: prefer existing Vendure dashboard primitives over

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnApplicationBootstrap, OnModuleInit } from '@nestjs/common';
 import {
     DeletionResponse,
     DeletionResult,
@@ -6,13 +6,17 @@ import {
 } from '@vendure/common/lib/generated-types';
 import { ID } from '@vendure/common/lib/shared-types';
 import {
+    Channel,
     ChannelEvent,
+    ChannelService,
     EventBus,
     IllegalOperationError,
     ListQueryBuilder,
     ListQueryOptions,
+    Logger,
     PaginatedList,
     RequestContext,
+    RequestContextService,
     TransactionalConnection,
     TranslatableSaver,
     TranslatorService,
@@ -24,6 +28,7 @@ import { filter } from 'rxjs/operators';
 import {
     DEFAULT_GROUP_CODE,
     ERR_PRICELIST_GROUP_DEFAULT_NOT_DELETABLE,
+    loggerCtx,
 } from '../constants';
 import { PriceListGroupTranslation } from '../entities/price-list-group-translation.entity';
 import { PriceListGroup } from '../entities/price-list-group.entity';
@@ -42,46 +47,114 @@ export interface UpdatePriceListGroupInput {
 }
 
 @Injectable()
-export class PriceListGroupService implements OnModuleInit {
+export class PriceListGroupService implements OnModuleInit, OnApplicationBootstrap {
     constructor(
         private connection: TransactionalConnection,
         private listQueryBuilder: ListQueryBuilder,
         private eventBus: EventBus,
         private translatableSaver: TranslatableSaver,
         private translator: TranslatorService,
+        private channelService: ChannelService,
+        private requestContextService: RequestContextService,
     ) {}
 
+    /**
+     * Forward path: any channel created **after** the plugin is loaded
+     * gets its default `PriceListGroup` materialized through the event
+     * bus. The handler is idempotent (existence check first), so a
+     * race with the bootstrap backfill below is benign.
+     */
     onModuleInit() {
         this.eventBus
             .ofType(ChannelEvent)
             .pipe(filter(e => e.type === 'created'))
             .subscribe(async event => {
                 const { ctx, entity: channel } = event;
-                const existing = await this.connection
-                    .getRepository(ctx, PriceListGroup)
-                    .findOne({ where: { channelId: channel.id, isDefault: true } });
-                if (existing) {
-                    return;
-                }
-                // Non-translated fields set via beforeSave; translatableSaver
-                // handles the translation row in the same transaction.
-                await this.translatableSaver.create({
-                    ctx,
-                    input: {
-                        translations: [
-                            { languageCode: ctx.languageCode, name: 'Default' },
-                        ],
-                    },
-                    entityType: PriceListGroup,
-                    translationType: PriceListGroupTranslation,
-                    beforeSave: g => {
-                        g.code = DEFAULT_GROUP_CODE;
-                        g.priority = 0;
-                        g.isDefault = true;
-                        g.channelId = channel.id;
-                    },
-                });
+                await this.ensureDefaultGroup(ctx, channel.id);
             });
+    }
+
+    /**
+     * Bootstrap path: any channel that **predates** the plugin install
+     * never received the `ChannelEvent` and therefore has no default
+     * group — `findDefaultForChannel` would throw on the first
+     * pricelist create. We backfill at application bootstrap so the
+     * plugin is drop-in safe on an existing system.
+     *
+     * Runs once per server start, scans every active channel, and
+     * skips those that already have a default group. Failure on a
+     * single channel is logged but does not abort bootstrap of the
+     * other channels (or of the rest of Vendure).
+     */
+    async onApplicationBootstrap(): Promise<void> {
+        try {
+            const ctx = await this.requestContextService.create({
+                apiType: 'admin',
+            });
+            const allChannels = await this.channelService.findAll(ctx, {
+                take: 1000,
+            });
+            for (const channel of allChannels.items) {
+                try {
+                    await this.ensureDefaultGroup(ctx, channel.id);
+                } catch (err) {
+                    Logger.error(
+                        `Failed to ensure default group for channel ${channel.code} (${channel.id}): ${
+                            (err as Error).message
+                        }`,
+                        loggerCtx,
+                    );
+                }
+            }
+        } catch (err) {
+            // Top-level catch — never let a plugin's bootstrap kill the
+            // server. We log and let `findDefaultForChannel` throw
+            // later with its user-facing message if a list is created
+            // on a channel without a default group.
+            Logger.error(
+                `Default-group backfill failed: ${(err as Error).message}`,
+                loggerCtx,
+            );
+        }
+    }
+
+    /**
+     * Idempotent helper: creates the default group for `channelId` if
+     * one doesn't exist. Shared between the channel-creation event
+     * handler and the bootstrap backfill.
+     */
+    private async ensureDefaultGroup(
+        ctx: RequestContext,
+        channelId: ID,
+    ): Promise<void> {
+        const existing = await this.connection
+            .getRepository(ctx, PriceListGroup)
+            .findOne({ where: { channelId, isDefault: true } });
+        if (existing) {
+            return;
+        }
+        // Non-translated fields set via beforeSave; translatableSaver
+        // handles the translation row in the same transaction.
+        await this.translatableSaver.create({
+            ctx,
+            input: {
+                translations: [
+                    { languageCode: ctx.languageCode, name: 'Default' },
+                ],
+            },
+            entityType: PriceListGroup,
+            translationType: PriceListGroupTranslation,
+            beforeSave: g => {
+                g.code = DEFAULT_GROUP_CODE;
+                g.priority = 0;
+                g.isDefault = true;
+                g.channelId = channelId;
+            },
+        });
+        Logger.info(
+            `Created default PriceListGroup for channel ${channelId}.`,
+            loggerCtx,
+        );
     }
 
     findAll(
