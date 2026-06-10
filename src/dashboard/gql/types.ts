@@ -30,6 +30,22 @@ export interface PriceListListResult {
     };
 }
 
+export interface PriceListByGroupItem {
+    id: string;
+    code: string;
+    name: string;
+    valueType: PriceListValueType;
+    enabled: boolean;
+    originChannel: { id: string; code: string };
+}
+
+export interface PriceListsByGroupResult {
+    priceListsByGroup: {
+        items: PriceListByGroupItem[];
+        totalItems: number;
+    };
+}
+
 export interface PriceListItemDetail {
     id: string;
     currencyCode: string;

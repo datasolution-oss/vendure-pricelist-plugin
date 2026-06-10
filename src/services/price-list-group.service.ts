@@ -225,7 +225,7 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
         ctx: RequestContext,
         input: CreatePriceListGroupInput,
     ): Promise<PriceListGroup> {
-        return this.translatableSaver.create({
+        const saved = await this.translatableSaver.create({
             ctx,
             input: {
                 translations: input.translations,
@@ -239,6 +239,13 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
                 g.channelId = ctx.channelId;
             },
         });
+        // Re-fetch via findOne so the returned entity is translated
+        // (name is a LocaleString resolved at query time) and carries
+        // the `channel` relation the SDL exposes. Returning the raw
+        // translatableSaver output instead leaves `name` null, which
+        // the non-nullable SDL field rejects:
+        //   "Cannot return null for non-nullable field PriceListGroup.name"
+        return (await this.findOne(ctx, saved.id)) as PriceListGroup;
     }
 
     async update(

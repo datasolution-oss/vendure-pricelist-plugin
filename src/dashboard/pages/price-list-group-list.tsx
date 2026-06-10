@@ -3,6 +3,7 @@ import { DetailPageButton } from '@/vdb/components/shared/detail-page-button.js'
 import { ListPage } from '@/vdb/framework/page/list-page.js';
 import { useLingui } from '@lingui/react/macro';
 import { AnyRoute } from '@tanstack/react-router';
+import { useRef } from 'react';
 
 import { CreatePriceListGroupDialog } from '../components/create-price-list-group-dialog';
 import { DeletePriceListGroupBulkAction } from '../components/delete-price-list-bulk-action';
@@ -14,11 +15,20 @@ interface PriceListGroupListPageProps {
 
 export function PriceListGroupListPage({ route }: Readonly<PriceListGroupListPageProps>) {
     const { t } = useLingui();
+    // PaginatedListDataTable (inside ListPage) keys its react-query cache
+    // on a constant + the DocumentNode, so a manual
+    // invalidateQueries({ queryKey: [...] }) from the create dialog never
+    // matches. Capture the table's own refetch fn via registerRefresher
+    // and hand it to the dialog so a freshly-created group shows without
+    // a manual page refresh.
+    const refresh = useRef<() => void>(() => {});
+
     return (
         <ListPage
             pageId="pricelist-group-list"
             listQuery={priceListGroupsListQuery as any}
             route={route}
+            registerRefresher={fn => (refresh.current = fn)}
             title={t`Pricelist Groups`}
             defaultVisibility={{
                 code: true,
@@ -66,7 +76,7 @@ export function PriceListGroupListPage({ route }: Readonly<PriceListGroupListPag
             }
             bulkActions={[[{ component: DeletePriceListGroupBulkAction }]]}
         >
-            <CreatePriceListGroupDialog />
+            <CreatePriceListGroupDialog onCreated={() => refresh.current()} />
         </ListPage>
     );
 }

@@ -2,6 +2,16 @@ import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Label } from '@/vdb/components/ui/label.js';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/vdb/components/ui/table.js';
+import { BooleanDisplayBadge } from '@/vdb/components/data-display/boolean.js';
+import { DetailPageButton } from '@/vdb/components/shared/detail-page-button.js';
 import { api } from '@/vdb/graphql/api.js';
 import {
     Page,
@@ -15,13 +25,16 @@ import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams } from '@tanstack/react-router';
-import { Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { updatePriceListGroupMutation } from '../gql/mutations';
-import { priceListGroupDetailQuery } from '../gql/queries';
-import type { PriceListGroupDetailResult } from '../gql/types';
+import { priceListGroupDetailQuery, priceListsByGroupQuery } from '../gql/queries';
+import type {
+    PriceListGroupDetailResult,
+    PriceListsByGroupResult,
+} from '../gql/types';
 
 export function PriceListGroupDetailPage() {
     const { t } = useLingui();
@@ -162,8 +175,126 @@ export function PriceListGroupDetailPage() {
                   translation row. See PLAN-STAGE-1 §"Stage 1D refactor"
                   for the equivalent change on the pricelist detail page.
                 */}
+
+                <PageBlock
+                    column="main"
+                    blockId="group-pricelists"
+                    title={t`Pricelists in this group`}
+                >
+                    <GroupPricelistsBlock groupId={g.id} />
+                </PageBlock>
             </PageLayout>
         </Page>
+    );
+}
+
+interface GroupPricelistsBlockProps {
+    groupId: string;
+}
+
+/**
+ * Lists the pricelists bound to this group (via the membership
+ * pivot), paginated. Read-only — clicking a row navigates to that
+ * pricelist's detail page where the binding can be changed.
+ */
+function GroupPricelistsBlock({ groupId }: Readonly<GroupPricelistsBlockProps>) {
+    const { t } = useLingui();
+    const [page, setPage] = useState(0);
+    const pageSize = 10;
+
+    const { data, isLoading } = useQuery({
+        queryKey: ['pricelists-by-group', groupId, page],
+        queryFn: () =>
+            api.query(priceListsByGroupQuery, {
+                groupId,
+                options: { skip: page * pageSize, take: pageSize },
+            } as any) as Promise<PriceListsByGroupResult>,
+    });
+
+    const items = data?.priceListsByGroup.items ?? [];
+    const totalItems = data?.priceListsByGroup.totalItems ?? 0;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+
+    if (isLoading) {
+        return <p className="text-sm text-muted-foreground">{t`Loading…`}</p>;
+    }
+    if (items.length === 0) {
+        return (
+            <p className="text-sm text-muted-foreground">
+                {t`No pricelists in this group yet.`}
+            </p>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>{t`Code`}</TableHead>
+                        <TableHead>{t`Name`}</TableHead>
+                        <TableHead>{t`Value type`}</TableHead>
+                        <TableHead>{t`Origin channel`}</TableHead>
+                        <TableHead>{t`Enabled`}</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {items.map(pl => (
+                        <TableRow key={pl.id}>
+                            <TableCell>
+                                <DetailPageButton id={pl.id} label={pl.code} />
+                            </TableCell>
+                            <TableCell>{pl.name}</TableCell>
+                            <TableCell>
+                                <Badge
+                                    variant={
+                                        pl.valueType === 'PERCENTAGE'
+                                            ? 'secondary'
+                                            : 'outline'
+                                    }
+                                >
+                                    {pl.valueType === 'PERCENTAGE'
+                                        ? t`Percentage`
+                                        : t`Absolute`}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">
+                                {pl.originChannel?.code ?? '—'}
+                            </TableCell>
+                            <TableCell>
+                                <BooleanDisplayBadge value={pl.enabled} />
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+
+            {totalPages > 1 && (
+                <div className="flex items-center justify-end gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setPage(p => Math.max(0, p - 1))}
+                        disabled={page === 0}
+                        aria-label={t`Previous page`}
+                    >
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span className="text-xs">
+                        {page + 1} / {totalPages}
+                    </span>
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                        disabled={page >= totalPages - 1}
+                        aria-label={t`Next page`}
+                    >
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+            )}
+        </div>
     );
 }
 

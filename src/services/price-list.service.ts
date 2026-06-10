@@ -469,6 +469,99 @@ export class PriceListService {
         return this.findOne(ctx, priceListId) as Promise<PriceList>;
     }
 
+    /**
+     * Reassign which group a pricelist belongs to **on a given channel**.
+     * The per-channel binding lives in `PriceListGroupMembership`; the
+     * channel is implicit via `group.channelId` (groups are
+     * channel-local). So "change the group on channel X" means: find the
+     * membership whose group sits on channel X and repoint it at the new
+     * group (which must also sit on channel X).
+     *
+     * Guards:
+     *   - only the origin channel may edit the list (standard guard)
+     *   - the target group must belong to `channelId`
+     *   - a membership for that channel must already exist (you change an
+     *     existing binding, you don't create one — that's `assignToChannel`)
+     */
+    async changeGroup(
+        ctx: RequestContext,
+        priceListId: ID,
+        channelId: ID,
+        groupId: ID,
+    ): Promise<PriceList> {
+        const list = await this.assertEditableList(ctx, priceListId);
+
+        const targetGroup = await this.connection
+            .getRepository(ctx, PriceListGroup)
+            .findOne({ where: { id: groupId } });
+        if (!targetGroup || !idsAreEqual(targetGroup.channelId, channelId)) {
+            throw new UserInputError(ERR_PRICELIST_GROUP_CHANNEL_MISMATCH);
+        }
+
+        // Find the existing membership for this channel — i.e. the
+        // membership row whose group is on `channelId`.
+        const memberships = await this.connection
+            .getRepository(ctx, PriceListGroupMembership)
+            .find({
+                where: { priceListId: list.id },
+                relations: ['group'],
+            });
+        const current = memberships.find(m =>
+            idsAreEqual(m.group.channelId, channelId),
+        );
+        if (!current) {
+            throw new UserInputError(
+                `PriceList ${priceListId} has no group binding on channel ${channelId}`,
+            );
+        }
+
+        // No-op if already pointing at the requested group.
+        if (idsAreEqual(current.groupId, groupId)) {
+            return this.findOne(ctx, priceListId) as Promise<PriceList>;
+        }
+
+        // Targeted column update — NOT entity .save(). `current` was
+        // loaded with its `group` relation, so saving the entity would
+        // make TypeORM re-derive groupId from the still-old `group`
+        // object and silently discard the scalar change (the "toast
+        // says success but DB unchanged" bug). Updating the column
+        // directly avoids the relation taking precedence.
+        await this.connection
+            .getRepository(ctx, PriceListGroupMembership)
+            .update({ id: current.id }, { groupId });
+
+        return this.findOne(ctx, priceListId) as Promise<PriceList>;
+    }
+
+    /**
+     * Every pricelist bound to a group (via the membership pivot),
+     * paginated. Backs the "pricelists in this group" block on the
+     * group detail page.
+     */
+    findByGroup(
+        ctx: RequestContext,
+        groupId: ID,
+        options?: { skip?: number; take?: number },
+    ): Promise<PaginatedList<PriceList>> {
+        const qb = this.listQueryBuilder.build(PriceList, options, {
+            relations: ['originChannel', 'translations'],
+            where: { deletedAt: IsNull() },
+            ctx,
+        });
+        qb.innerJoin(
+            'price_list_group_membership',
+            'plgm',
+            'plgm."priceListId" = pricelist.id AND plgm."groupId" = :gid',
+            { gid: groupId },
+        );
+        return qb
+            .getManyAndCount()
+            .then(([items, totalItems]) => ({
+                items: items.map(pl => this.translatePriceList(pl, ctx)),
+                totalItems,
+            }));
+    }
+
     // === Customer / customer-group assignment management ===
 
     async setAssignedToEveryone(

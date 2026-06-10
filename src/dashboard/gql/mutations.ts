@@ -118,6 +118,31 @@ export const removePriceListFromChannelMutation = graphql(/* GraphQL */ `
     }
 `);
 
+/**
+ * Reassign which group a pricelist belongs to on a channel. Returns
+ * refreshed groupMemberships so the Channel memberships table on the
+ * detail page updates in place.
+ */
+export const changePriceListGroupMutation = graphql(/* GraphQL */ `
+    mutation ChangePriceListGroup($priceListId: ID!, $channelId: ID!, $groupId: ID!) {
+        changePriceListGroup(priceListId: $priceListId, channelId: $channelId, groupId: $groupId) {
+            id
+            groupMemberships {
+                id
+                group {
+                    id
+                    code
+                    name
+                    channel {
+                        id
+                        code
+                    }
+                }
+            }
+        }
+    }
+`);
+
 // === Customer access ===
 
 export const setPriceListAssignedToEveryoneMutation = graphql(/* GraphQL */ `

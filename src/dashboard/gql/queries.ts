@@ -8,7 +8,6 @@ export const priceListsListQuery = graphql(/* GraphQL */ `
         code
         name
         valueType
-        timezone
         priority
         enabled
         startDate
@@ -245,6 +244,29 @@ export const priceListGroupsByChannelQuery = graphql(/* GraphQL */ `
       name
       priority
       isDefault
+    }
+  }
+`);
+
+/**
+ * Pricelists bound to a group (via the membership pivot). Backs the
+ * "pricelists in this group" block on the group detail page.
+ */
+export const priceListsByGroupQuery = graphql(/* GraphQL */ `
+  query GetPriceListsByGroup($groupId: ID!, $options: PriceListListOptions) {
+    priceListsByGroup(groupId: $groupId, options: $options) {
+      items {
+        id
+        code
+        name
+        valueType
+        enabled
+        originChannel {
+          id
+          code
+        }
+      }
+      totalItems
     }
   }
 `);

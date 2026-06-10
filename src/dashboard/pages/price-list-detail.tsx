@@ -7,7 +7,6 @@ import { Textarea } from '@/vdb/components/ui/textarea.js';
 import {
     Table,
     TableBody,
-    TableCell,
     TableHead,
     TableHeader,
     TableRow,
@@ -30,6 +29,7 @@ import { Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { GroupMembershipRow } from '../components/group-membership-row';
 import { PriceListAccessBlock } from '../components/price-list-access-block';
 import { PriceListItemsGrid } from '../components/price-list-items-grid';
 import { ReadOnlyBanner } from '../components/read-only-banner';
@@ -257,10 +257,20 @@ export function PriceListDetailPage() {
                                 </span>
                             </div>
                         </FormRow>
-                        {/* Timezone field intentionally hidden — see plan
-                            Stage 1D §"timezone on hold". The DB column still
-                            exists (defaults to UTC); re-enable by mounting
-                            TimezoneSelect when Stage-2 lookup consumes it. */}
+                        {/* Timezone editing is on hold (Stage 1D) — the
+                            picker isn't mounted. We still surface the
+                            stored value read-only here so it's discoverable
+                            without cluttering the list with a column.
+                            Replace this with TimezoneSelect when Stage-2
+                            lookup consumes the field. */}
+                        <FormRow label={t`Timezone`}>
+                            <div className="flex items-center gap-2">
+                                <code className="text-sm">{pl.timezone}</code>
+                                <span className="text-xs text-muted-foreground">
+                                    {t`Editing on hold.`}
+                                </span>
+                            </div>
+                        </FormRow>
                         <FormRow label={t`Priority`}>
                             <Input
                                 type="number"
@@ -330,49 +340,29 @@ export function PriceListDetailPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {pl.groupMemberships.map(m => {
-                                    const isOriginRow =
-                                        m.group.channel.id === pl.originChannel.id;
-                                    return (
-                                        <TableRow key={m.id}>
-                                            <TableCell className="font-mono">
-                                                {m.group.channel.code}
-                                            </TableCell>
-                                            <TableCell className="font-mono">
-                                                {m.group.code}
-                                            </TableCell>
-                                            <TableCell>
-                                                {isOriginRow && (
-                                                    <Badge variant="success">
-                                                        {t`origin`}
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {!isOriginRow && (
-                                                    <ConfirmationDialog
-                                                        title={t`Stop sharing on this channel?`}
-                                                        description={t`The pricelist will no longer be visible on the target channel. Items remain intact.`}
-                                                        confirmText={t`Stop sharing`}
-                                                        onConfirm={() =>
-                                                            unshareMutation.mutate(
-                                                                m.group.channel.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            disabled={!isEditable}
-                                                        >
-                                                            {t`Stop sharing`}
-                                                        </Button>
-                                                    </ConfirmationDialog>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
+                                {pl.groupMemberships.map(m => (
+                                    <GroupMembershipRow
+                                        key={m.id}
+                                        priceListId={pl.id}
+                                        membershipId={m.id}
+                                        channelId={m.group.channel.id}
+                                        channelCode={m.group.channel.code}
+                                        currentGroupId={m.group.id}
+                                        currentGroupCode={m.group.code}
+                                        isOrigin={
+                                            m.group.channel.id === pl.originChannel.id
+                                        }
+                                        disabled={!isEditable}
+                                        onChanged={() =>
+                                            queryClient.invalidateQueries({
+                                                queryKey: ['pricelist', id],
+                                            })
+                                        }
+                                        onUnshare={() =>
+                                            unshareMutation.mutate(m.group.channel.id)
+                                        }
+                                    />
+                                ))}
                             </TableBody>
                         </Table>
                     )}

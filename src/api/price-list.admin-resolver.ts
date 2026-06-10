@@ -142,6 +142,30 @@ export class PriceListAdminResolver {
         return this.priceListService.removeFromChannel(ctx, args.priceListId, args.channelId);
     }
 
+    @Mutation()
+    @Transaction()
+    @Allow(priceListPermission.Update)
+    async changePriceListGroup(
+        @Ctx() ctx: RequestContext,
+        @Args() args: { priceListId: ID; channelId: ID; groupId: ID },
+    ): Promise<PriceList> {
+        return this.priceListService.changeGroup(
+            ctx,
+            args.priceListId,
+            args.channelId,
+            args.groupId,
+        );
+    }
+
+    @Query()
+    @Allow(priceListPermission.Read)
+    async priceListsByGroup(
+        @Ctx() ctx: RequestContext,
+        @Args() args: { groupId: ID; options?: { skip?: number; take?: number } },
+    ): Promise<PaginatedList<PriceList>> {
+        return this.priceListService.findByGroup(ctx, args.groupId, args.options);
+    }
+
     // === Assignment management ===
 
     @Mutation()

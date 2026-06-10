@@ -225,6 +225,12 @@ export const adminApiExtensions = gql`
         """
         priceListGroupsByChannel(channelId: ID!): [PriceListGroup!]!
         """
+        Paginated list of pricelists bound to a group (via the
+        membership pivot). Backs the "pricelists in this group" block
+        on the group detail page.
+        """
+        priceListsByGroup(groupId: ID!, options: PriceListListOptions): PriceListList!
+        """
         Per-variant aggregate listing for a pricelist. Each row is one
         ProductVariant present in the list with summary counts. Use
         \`priceListVariantItems\` to load the underlying rows for editing.
@@ -300,6 +306,14 @@ export const adminApiExtensions = gql`
         # Channel sharing
         assignPriceListToChannel(input: AssignPriceListToChannelInput!): PriceList!
         removePriceListFromChannel(priceListId: ID!, channelId: ID!): PriceList!
+        """
+        Reassign the group a pricelist belongs to on a given channel.
+        The membership for that channel is repointed at \`groupId\`,
+        which must itself belong to \`channelId\`. Errors if no binding
+        exists for the channel yet (use assignPriceListToChannel to
+        create one).
+        """
+        changePriceListGroup(priceListId: ID!, channelId: ID!, groupId: ID!): PriceList!
 
         # PriceListGroup CRUD
         createPriceListGroup(input: CreatePriceListGroupInput!): PriceListGroup!

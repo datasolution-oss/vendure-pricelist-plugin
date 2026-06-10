@@ -21,7 +21,7 @@ import { api } from '@/vdb/graphql/api.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Share2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { assignPriceListToChannelMutation } from '../gql/mutations';
@@ -46,7 +46,7 @@ interface ShareToChannelDialogProps {
  */
 export function ShareToChannelDialog({
     priceListId,
-    excludeChannelIds: _excludeChannelIds,
+    excludeChannelIds,
     disabled,
 }: Readonly<ShareToChannelDialogProps>) {
     const { t } = useLingui();
@@ -54,6 +54,13 @@ export function ShareToChannelDialog({
     const [open, setOpen] = useState(false);
     const [channelId, setChannelId] = useState<string>('');
     const [groupId, setGroupId] = useState<string>('');
+
+    // The standard ChannelSelector can't filter its options, so we
+    // validate the choice instead: if the picked channel is one the
+    // list already belongs to, block the share with an inline message
+    // rather than letting the server reject it with a generic error.
+    const alreadyShared =
+        channelId.length > 0 && excludeChannelIds.includes(channelId);
 
     // Fetch the groups for the chosen target channel. Lazily enabled —
     // doesn't fire until a channel is picked.
@@ -85,6 +92,16 @@ export function ShareToChannelDialog({
     });
 
     const groups = groupsData?.priceListGroupsByChannel ?? [];
+
+    // Pre-select the target channel's default group once the groups
+    // load (the merchandiser can still pick another). Only auto-fills
+    // when nothing is selected yet, so it doesn't fight a manual pick.
+    useEffect(() => {
+        if (!groupId && groups.length > 0) {
+            const def = groups.find(g => g.isDefault) ?? groups[0];
+            if (def) setGroupId(def.id);
+        }
+    }, [groups, groupId]);
 
     return (
         <Dialog
@@ -122,6 +139,11 @@ export function ShareToChannelDialog({
                             }}
                             multiple={false}
                         />
+                        {alreadyShared && (
+                            <p className="text-xs text-destructive">
+                                {t`This pricelist is already shared to that channel.`}
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -132,6 +154,14 @@ export function ShareToChannelDialog({
                             disabled={!channelId || groupsLoading}
                         >
                             <SelectTrigger>
+                                {/*
+                                  Render the label from our own `groups`
+                                  lookup. base-ui's auto-mirror can't
+                                  resolve id→label when the value is set
+                                  programmatically (G2 pre-selection)
+                                  before the items mount — it would show
+                                  the raw id until a manual pick.
+                                */}
                                 <SelectValue
                                     placeholder={
                                         channelId
@@ -140,13 +170,31 @@ export function ShareToChannelDialog({
                                                 : t`Pick a group`
                                             : t`Pick a channel first`
                                     }
-                                />
+                                >
+                                    {(value: unknown) => {
+                                        const g = groups.find(
+                                            x => x.id === value,
+                                        );
+                                        if (!g) return null;
+                                        return g.isDefault
+                                            ? `${g.name} (${g.code}) — ${t`default`}`
+                                            : `${g.name} (${g.code})`;
+                                    }}
+                                </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                                 {groups.map(g => (
+                                    // Child MUST be a single plain string —
+                                    // the Select's value-mirror renders the
+                                    // chosen item's text into the trigger,
+                                    // and a mixed JSX child (the previous
+                                    // `{g.name} ({g.code}){cond && ...}` form)
+                                    // made it fall back to showing the raw
+                                    // `value` (the group id).
                                     <SelectItem key={g.id} value={g.id}>
-                                        {g.name} ({g.code})
-                                        {g.isDefault && ` — ${t`default`}`}
+                                        {g.isDefault
+                                            ? `${g.name} (${g.code}) — ${t`default`}`
+                                            : `${g.name} (${g.code})`}
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -165,7 +213,12 @@ export function ShareToChannelDialog({
                     </Button>
                     <Button
                         onClick={() => mutation.mutate()}
-                        disabled={!channelId || !groupId || mutation.isPending}
+                        disabled={
+                            !channelId ||
+                            !groupId ||
+                            alreadyShared ||
+                            mutation.isPending
+                        }
                     >
                         {t`Share`}
                     </Button>
