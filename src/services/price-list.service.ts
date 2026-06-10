@@ -122,7 +122,11 @@ export class PriceListService {
             }));
     }
 
-    async findOne(ctx: RequestContext, id: ID): Promise<PriceList | undefined> {
+    async findOne(
+        ctx: RequestContext,
+        id: ID,
+        opts: { includeDeleted?: boolean } = {},
+    ): Promise<PriceList | undefined> {
         // We DON'T use `connection.findOneInChannel(...)` here even though it
         // looks like the right tool: that helper sets up a query builder with
         // alias 'entity' AND calls `setFindOptions({ relationLoadStrategy:
@@ -137,12 +141,18 @@ export class PriceListService {
         // consistently. We add the channel filter via `where: { channels: {
         // id: ctx.channelId } }` instead — TypeORM expands that to the
         // appropriate join automatically.
+        //
+        // `includeDeleted` lets the detail page load a pending-deletion
+        // list (deletedAt set, not yet purged) so the merchandiser can
+        // view it and Restore — without it the list shows in the
+        // "pending deletion" toggle yet 404s on click. Internal callers
+        // keep the default (exclude deleted).
         const list = await this.connection
             .getRepository(ctx, PriceList)
             .findOne({
                 where: {
                     id,
-                    deletedAt: IsNull(),
+                    ...(opts.includeDeleted ? {} : { deletedAt: IsNull() }),
                     channels: { id: ctx.channelId },
                 },
                 relations: [

@@ -40,6 +40,12 @@ export const adminApiExtensions = gql`
         createdAt: DateTime!
         updatedAt: DateTime!
         deletedAt: DateTime
+        """
+        When a pending-deletion list will be hard-deleted by the purge
+        cron (= deletedAt + grace period). Null when the list is active
+        or when the purge task is disabled. Computed, not stored.
+        """
+        purgeAt: DateTime
     }
 
     type PriceListGroupMembership implements Node {

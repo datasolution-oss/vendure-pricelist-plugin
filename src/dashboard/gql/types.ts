@@ -17,6 +17,8 @@ export interface PriceListListItem {
     enabled: boolean;
     startDate: string | null;
     endDate: string | null;
+    /** Set when the list is pending deletion (Stage 1E). */
+    deletedAt: string | null;
     originChannel: { id: string; code: string };
     channels: Array<{ id: string; code: string }>;
     createdAt: string;
@@ -102,6 +104,8 @@ export interface PriceListDetail
      * paginated via the dedicated grid query.
      */
     assignedToEveryone: boolean;
+    /** Computed hard-delete timestamp when pending deletion (Stage 1E). */
+    purgeAt: string | null;
     translations: PriceListTranslationItem[];
 }
 

@@ -49,6 +49,8 @@ export const priceListDetailQuery = graphql(/* GraphQL */ `
       enabled
       startDate
       endDate
+      deletedAt
+      purgeAt
       originChannel {
         id
         code

@@ -36,7 +36,12 @@ export class PriceListAdminResolver {
         @Ctx() ctx: RequestContext,
         @Args() args: { id: ID },
     ): Promise<PriceList | undefined> {
-        return this.priceListService.findOne(ctx, args.id);
+        // includeDeleted: the detail page must be able to open a
+        // pending-deletion list (visible in the "show pending" toggle)
+        // to view it and Restore — otherwise clicking it 404s.
+        return this.priceListService.findOne(ctx, args.id, {
+            includeDeleted: true,
+        });
     }
 
     @Query()

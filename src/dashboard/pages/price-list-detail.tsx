@@ -12,6 +12,7 @@ import {
     TableRow,
 } from '@/vdb/components/ui/table.js';
 import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
+import { DateTime } from '@/vdb/components/data-display/date-time.js';
 import { api } from '@/vdb/graphql/api.js';
 import {
     Page,
@@ -25,7 +26,7 @@ import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { Save, Trash2 } from 'lucide-react';
+import { RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -37,6 +38,7 @@ import { ShareToChannelDialog } from '../components/share-to-channel-dialog';
 import {
     deletePriceListMutation,
     removePriceListFromChannelMutation,
+    restorePriceListMutation,
     updatePriceListMutation,
 } from '../gql/mutations';
 import { priceListDetailQuery } from '../gql/queries';
@@ -148,6 +150,18 @@ export function PriceListDetailPage() {
         },
     });
 
+    const restoreMutation = useMutation({
+        mutationFn: () => api.mutate(restorePriceListMutation, { id: pl!.id } as any),
+        onSuccess: () => {
+            toast.success(t`Pricelist restored`);
+            queryClient.invalidateQueries({ queryKey: ['pricelist', id] });
+        },
+        onError: err => {
+            console.error('[pricelist] restorePriceList failed:', err);
+            toast.error(t`Failed to restore`);
+        },
+    });
+
     if (isLoading) {
         return <div className="text-sm text-muted-foreground">{t`Loading…`}</div>;
     }
@@ -162,6 +176,7 @@ export function PriceListDetailPage() {
     }
 
     const sharedChannels = pl.channels.filter(c => c.id !== pl.originChannel.id);
+    const isPendingDeletion = !!pl.deletedAt;
 
     return (
         <Page pageId="pricelist-detail">
@@ -169,31 +184,64 @@ export function PriceListDetailPage() {
 
             {!isEditable && <ReadOnlyBanner originChannelCode={pl.originChannel.code} />}
 
+            {isPendingDeletion && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm">
+                    {pl.purgeAt ? (
+                        <span>
+                            {t`This pricelist is pending deletion. It will be permanently purged on`}{' '}
+                            <strong>
+                                <DateTime value={pl.purgeAt} />
+                            </strong>
+                            {t`. Restore it to cancel.`}
+                        </span>
+                    ) : (
+                        t`This pricelist is pending deletion. Restore it to cancel.`
+                    )}
+                </div>
+            )}
+
             <PageActionBar>
                 <PageActionBarRight>
-                    <ShareToChannelDialog
-                        priceListId={pl.id}
-                        excludeChannelIds={pl.channels.map(c => c.id)}
-                        disabled={!isEditable}
-                    />
-                    <ConfirmationDialog
-                        title={t`Delete this pricelist?`}
-                        description={t`The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable "Show pending deletion" on the list page during that window to restore.`}
-                        confirmText={t`Delete`}
-                        onConfirm={() => deleteMutation.mutate()}
-                    >
-                        <Button variant="destructive" disabled={!isEditable}>
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            {t`Delete`}
+                    {isPendingDeletion ? (
+                        // Pending-deletion list: the only meaningful action
+                        // is Restore. Hide Share/Delete/Save — editing a
+                        // list that's scheduled for purge is confusing, and
+                        // the server's edit guards would mostly reject it
+                        // anyway.
+                        <Button
+                            onClick={() => restoreMutation.mutate()}
+                            disabled={!isEditable || restoreMutation.isPending}
+                        >
+                            <RotateCcw className="h-4 w-4 mr-1" />
+                            {t`Restore`}
                         </Button>
-                    </ConfirmationDialog>
-                    <Button
-                        onClick={() => saveMutation.mutate()}
-                        disabled={!isEditable || saveMutation.isPending}
-                    >
-                        <Save className="h-4 w-4 mr-1" />
-                        {t`Save`}
-                    </Button>
+                    ) : (
+                        <>
+                            <ShareToChannelDialog
+                                priceListId={pl.id}
+                                excludeChannelIds={pl.channels.map(c => c.id)}
+                                disabled={!isEditable}
+                            />
+                            <ConfirmationDialog
+                                title={t`Delete this pricelist?`}
+                                description={t`The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable "Show pending deletion" on the list page during that window to restore.`}
+                                confirmText={t`Delete`}
+                                onConfirm={() => deleteMutation.mutate()}
+                            >
+                                <Button variant="destructive" disabled={!isEditable}>
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    {t`Delete`}
+                                </Button>
+                            </ConfirmationDialog>
+                            <Button
+                                onClick={() => saveMutation.mutate()}
+                                disabled={!isEditable || saveMutation.isPending}
+                            >
+                                <Save className="h-4 w-4 mr-1" />
+                                {t`Save`}
+                            </Button>
+                        </>
+                    )}
                 </PageActionBarRight>
             </PageActionBar>
 
