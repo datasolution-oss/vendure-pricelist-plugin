@@ -1,3 +1,5 @@
+import { PriceListChannelAccess } from './price-list-channel-access.entity';
+import { PriceListChannelDefaultGroup } from './price-list-channel-default-group.entity';
 import { PriceListGroupMembership } from './price-list-group-membership.entity';
 import { PriceListGroupTranslation } from './price-list-group-translation.entity';
 import { PriceListGroup } from './price-list-group.entity';
@@ -11,6 +13,8 @@ export { PriceListItem, PriceListValueType } from './price-list-item.entity';
 export { PriceListGroup } from './price-list-group.entity';
 export { PriceListGroupTranslation } from './price-list-group-translation.entity';
 export { PriceListGroupMembership } from './price-list-group-membership.entity';
+export { PriceListChannelDefaultGroup } from './price-list-channel-default-group.entity';
+export { PriceListChannelAccess } from './price-list-channel-access.entity';
 
 export const ALL_ENTITIES = [
     PriceList,
@@ -19,4 +23,6 @@ export const ALL_ENTITIES = [
     PriceListGroup,
     PriceListGroupTranslation,
     PriceListGroupMembership,
+    PriceListChannelDefaultGroup,
+    PriceListChannelAccess,
 ];

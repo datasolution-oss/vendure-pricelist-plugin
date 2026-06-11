@@ -1,8 +1,10 @@
 import { DataTableBulkActionItem } from '@/vdb/components/data-table/data-table-bulk-action-item.js';
 import { BulkActionComponent } from '@/vdb/framework/extension-api/types/data-table.js';
 import { api } from '@/vdb/graphql/api.js';
+import { useChannel } from '@/vdb/hooks/use-channel.js';
 import { usePaginatedList } from '@/vdb/hooks/use-paginated-list.js';
 import { useLingui } from '@lingui/react/macro';
+import { useQuery } from '@tanstack/react-query';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -11,6 +13,7 @@ import {
     deletePriceListGroupMutation,
     restorePriceListMutation,
 } from '../gql/mutations';
+import { priceListDefaultGroupQuery } from '../gql/queries';
 
 /**
  * Soft-deletes selected pricelists. Our `deletePriceList` mutation is
@@ -130,6 +133,19 @@ export const DeletePriceListGroupBulkAction: BulkActionComponent<any> = ({
 }) => {
     const { t } = useLingui();
     const { refetchPaginatedList } = usePaginatedList();
+    // The default group is channel-side now (no `isDefault` on the row),
+    // so resolve the active channel's default group id to filter it out.
+    const { activeChannel } = useChannel();
+    const activeChannelId = activeChannel ? String(activeChannel.id) : undefined;
+    const { data: defaultGroupData } = useQuery({
+        queryKey: ['pricelist-default-group', activeChannelId],
+        enabled: !!activeChannelId,
+        queryFn: () =>
+            api.query(priceListDefaultGroupQuery, {
+                channelId: activeChannelId!,
+            } as any) as Promise<{ priceListDefaultGroup: { id: string } | null }>,
+    });
+    const defaultGroupId = defaultGroupData?.priceListDefaultGroup?.id;
 
     const runDelete = async () => {
         try {
@@ -139,7 +155,9 @@ export const DeletePriceListGroupBulkAction: BulkActionComponent<any> = ({
             // counts stay honest and the user gets a clear message
             // instead of a generic "failed to delete" for a row they
             // could never remove. Server guard remains the backstop.
-            const deletable = selection.filter((item: any) => !item.isDefault);
+            const deletable = selection.filter(
+                (item: any) => item.id !== defaultGroupId,
+            );
             const skipped = selection.length - deletable.length;
 
             if (deletable.length === 0) {

@@ -21,6 +21,7 @@ import {
     PageLayout,
     PageTitle,
 } from '@/vdb/framework/layout-engine/page-layout.js';
+import { useChannel } from '@/vdb/hooks/use-channel.js';
 import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,7 +31,11 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { updatePriceListGroupMutation } from '../gql/mutations';
-import { priceListGroupDetailQuery, priceListsByGroupQuery } from '../gql/queries';
+import {
+    priceListDefaultGroupQuery,
+    priceListGroupDetailQuery,
+    priceListsByGroupQuery,
+} from '../gql/queries';
 import type {
     PriceListGroupDetailResult,
     PriceListsByGroupResult,
@@ -57,6 +62,22 @@ export function PriceListGroupDetailPage() {
     });
 
     const g = data?.priceListGroup ?? null;
+
+    // Default-for-channel is now a channel-side fact; resolve the active
+    // channel's default group id to display whether this group is it.
+    const { activeChannel } = useChannel();
+    const activeChannelId = activeChannel ? String(activeChannel.id) : undefined;
+    const { data: defaultGroupData } = useQuery({
+        queryKey: ['pricelist-default-group', activeChannelId],
+        enabled: !!activeChannelId,
+        queryFn: () =>
+            api.query(priceListDefaultGroupQuery, {
+                channelId: activeChannelId!,
+            } as any) as Promise<{ priceListDefaultGroup: { id: string } | null }>,
+    });
+    const isDefaultForActiveChannel =
+        !!g && !!defaultGroupData?.priceListDefaultGroup &&
+        g.id === defaultGroupData.priceListDefaultGroup.id;
 
     const [code, setCode] = useState('');
     const [name, setName] = useState('');
@@ -157,11 +178,21 @@ export function PriceListGroupDetailPage() {
                                 }
                             />
                         </FormRow>
-                        <FormRow label={t`Channel`}>
-                            <code className="text-sm">{g.channel.code}</code>
+                        <FormRow label={t`Channels`}>
+                            <span className="flex flex-wrap gap-1">
+                                {g.channels.length > 0 ? (
+                                    g.channels.map(c => (
+                                        <code key={c.id} className="text-sm">
+                                            {c.code}
+                                        </code>
+                                    ))
+                                ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                )}
+                            </span>
                         </FormRow>
-                        <FormRow label={t`Default for channel`}>
-                            {g.isDefault ? (
+                        <FormRow label={t`Default for active channel`}>
+                            {isDefaultForActiveChannel ? (
                                 <Badge variant="success">{t`Yes`}</Badge>
                             ) : (
                                 <Badge variant="secondary">{t`No`}</Badge>

@@ -135,15 +135,25 @@ export class PriceListItemService {
         priceListId: ID,
         options?: ListQueryOptions<PriceListItem>,
     ): Promise<PaginatedList<PriceListItem>> {
-        return this.listQueryBuilder
-            .build(PriceListItem, options, {
-                where: {
-                    priceListId,
-                    priceList: { deletedAt: IsNull() },
-                },
-                relations: ['productVariant', 'priceList'],
-                ctx,
-            })
+        const qb = this.listQueryBuilder.build(PriceListItem, options, {
+            where: {
+                priceListId,
+                priceList: { deletedAt: IsNull() },
+            },
+            relations: ['productVariant', 'priceList'],
+            ctx,
+        });
+        // Channel scoping via EXISTS rather than a relation `where`:
+        // ListQueryBuilder does not auto-join nested relation conditions, and
+        // an EXISTS avoids row multiplication on the channels pivot. Restricts
+        // items to variants assigned to the active channel.
+        qb.andWhere(
+            `EXISTS (SELECT 1 FROM "product_variant_channels_channel" "pvcc" ` +
+                `WHERE "pvcc"."productVariantId" = "${qb.alias}"."productVariantId" ` +
+                `AND "pvcc"."channelId" = :plChannelId)`,
+            { plChannelId: ctx.channelId },
+        );
+        return qb
             .getManyAndCount()
             .then(([items, totalItems]) => ({ items, totalItems }));
     }
@@ -163,6 +173,11 @@ export class PriceListItemService {
                 priceListId,
                 productVariantId,
                 priceList: { deletedAt: IsNull() },
+                // Channel scoping: the variant must be assigned to the active
+                // channel. Prevents reading cells for a variant that exists
+                // only on the list's origin channel when viewed from a
+                // channel the list is shared to.
+                productVariant: { channels: { id: ctx.channelId } },
             },
             relations: ['productVariant', 'priceList'],
             order: { currencyCode: 'ASC', stepQuantity: 'ASC' },
@@ -197,6 +212,14 @@ export class PriceListItemService {
         const rowsQb = repo
             .createQueryBuilder('item')
             .innerJoin('item.priceList', 'pl')
+            // Channel scoping: only surface variants assigned to the active
+            // channel. A list shared to channel B must not show variants that
+            // exist only on the origin channel. Filtering in SQL (before
+            // LIMIT/OFFSET) keeps both totalItems and pagination correct.
+            .innerJoin('item.productVariant', 'pv')
+            .innerJoin('pv.channels', 'pvch', 'pvch.id = :channelId', {
+                channelId: ctx.channelId,
+            })
             .where('item.priceListId = :pid', { pid: priceListId })
             .andWhere('pl.deletedAt IS NULL')
             .select('item.productVariantId', 'productVariantId')
@@ -220,6 +243,12 @@ export class PriceListItemService {
         const countRow: { count: string } | undefined = await repo
             .createQueryBuilder('item')
             .innerJoin('item.priceList', 'pl')
+            // Same channel scoping as the rows query so the count matches the
+            // number of variants actually shown in the active channel.
+            .innerJoin('item.productVariant', 'pv')
+            .innerJoin('pv.channels', 'pvch', 'pvch.id = :channelId', {
+                channelId: ctx.channelId,
+            })
             .where('item.priceListId = :pid', { pid: priceListId })
             .andWhere('pl.deletedAt IS NULL')
             .select('COUNT(DISTINCT item.productVariantId)', 'count')

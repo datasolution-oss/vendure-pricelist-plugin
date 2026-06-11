@@ -58,12 +58,18 @@ export interface PriceListItemDetail {
 
 export interface PriceListGroupMembershipItem {
     id: string;
+    /** The channel this binding applies to (explicit on the membership). */
+    channel: { id: string; code: string };
     group: {
         id: string;
         code: string;
         name: string;
-        channel: { id: string; code: string };
     };
+}
+
+export interface PriceListChannelAccess {
+    id: string;
+    assignedToEveryone: boolean;
 }
 
 export interface PriceListAssignedCustomer {
@@ -102,8 +108,10 @@ export interface PriceListDetail
      * loaded via the paginated `priceListAssignedCustomers` /
      * `priceListAssignedCustomerGroups` queries instead. Items are also
      * paginated via the dedicated grid query.
+     *
+     * `assignedToEveryone` is NOT here — access is per-channel now; read
+     * it via `priceListChannelAccess(priceListId, channelId)`.
      */
-    assignedToEveryone: boolean;
     /** Computed hard-delete timestamp when pending deletion (Stage 1E). */
     purgeAt: string | null;
     translations: PriceListTranslationItem[];
@@ -148,8 +156,7 @@ export interface PriceListGroupListItem {
     code: string;
     name: string;
     priority: number;
-    isDefault: boolean;
-    channel: { id: string; code: string };
+    channels: Array<{ id: string; code: string }>;
     createdAt: string;
     updatedAt: string;
 }
@@ -174,7 +181,6 @@ export interface PriceListGroupByChannelItem {
     code: string;
     name: string;
     priority: number;
-    isDefault: boolean;
 }
 
 export interface PriceListGroupsByChannelResult {

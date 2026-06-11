@@ -25,7 +25,10 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
 import { assignPriceListToChannelMutation } from '../gql/mutations';
-import { priceListGroupsByChannelQuery } from '../gql/queries';
+import {
+    priceListDefaultGroupQuery,
+    priceListGroupsByChannelQuery,
+} from '../gql/queries';
 import type { PriceListGroupsByChannelResult } from '../gql/types';
 
 interface ShareToChannelDialogProps {
@@ -93,15 +96,27 @@ export function ShareToChannelDialog({
 
     const groups = groupsData?.priceListGroupsByChannel ?? [];
 
+    // The default group is now channel-side (no `isDefault` flag on the
+    // group). Resolve it for the target channel to mark/pre-select it.
+    const { data: defaultGroupData } = useQuery({
+        queryKey: ['pricelist-default-group', channelId],
+        enabled: !!channelId,
+        queryFn: () =>
+            api.query(priceListDefaultGroupQuery, { channelId } as any) as Promise<{
+                priceListDefaultGroup: { id: string; code: string; name: string } | null;
+            }>,
+    });
+    const defaultGroupId = defaultGroupData?.priceListDefaultGroup?.id;
+
     // Pre-select the target channel's default group once the groups
     // load (the merchandiser can still pick another). Only auto-fills
     // when nothing is selected yet, so it doesn't fight a manual pick.
     useEffect(() => {
         if (!groupId && groups.length > 0) {
-            const def = groups.find(g => g.isDefault) ?? groups[0];
+            const def = groups.find(g => g.id === defaultGroupId) ?? groups[0];
             if (def) setGroupId(def.id);
         }
-    }, [groups, groupId]);
+    }, [groups, groupId, defaultGroupId]);
 
     return (
         <Dialog
@@ -176,7 +191,7 @@ export function ShareToChannelDialog({
                                             x => x.id === value,
                                         );
                                         if (!g) return null;
-                                        return g.isDefault
+                                        return g.id === defaultGroupId
                                             ? `${g.name} (${g.code}) — ${t`default`}`
                                             : `${g.name} (${g.code})`;
                                     }}
@@ -192,7 +207,7 @@ export function ShareToChannelDialog({
                                     // made it fall back to showing the raw
                                     // `value` (the group id).
                                     <SelectItem key={g.id} value={g.id}>
-                                        {g.isDefault
+                                        {g.id === defaultGroupId
                                             ? `${g.name} (${g.code}) — ${t`default`}`
                                             : `${g.name} (${g.code})`}
                                     </SelectItem>

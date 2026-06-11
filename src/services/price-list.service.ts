@@ -7,8 +7,6 @@ import {
 import { ID } from '@vendure/common/lib/shared-types';
 import {
     Channel,
-    Customer,
-    CustomerGroup,
     IllegalOperationError,
     ListQueryBuilder,
     ListQueryOptions,
@@ -24,11 +22,13 @@ import { IsNull } from 'typeorm';
 
 import {
     ERR_PRICELIST_GROUP_CHANNEL_MISMATCH,
+    ERR_PRICELIST_NOT_SHARED_TO_CHANNEL,
     ERR_PRICELIST_READONLY_NON_ORIGIN_CHANNEL,
 } from '../constants';
+import { PriceListChannelAccess } from '../entities/price-list-channel-access.entity';
 import { PriceListGroupMembership } from '../entities/price-list-group-membership.entity';
 import { PriceListGroup } from '../entities/price-list-group.entity';
-import { PriceListItem, PriceListValueType } from '../entities/price-list-item.entity';
+import { PriceListValueType } from '../entities/price-list-item.entity';
 import { PriceListTranslation } from '../entities/price-list-translation.entity';
 import { PriceList } from '../entities/price-list.entity';
 
@@ -45,8 +45,7 @@ export interface CreatePriceListInput {
     valueType: PriceListValueType;
     /**
      * Optional at the API edge (Stage 1D — picker held back); defaults
-     * to `'UTC'` when omitted. The DB column itself is NOT NULL DEFAULT
-     * 'UTC' so this fallback is purely an input-shape convenience.
+     * to `'UTC'` when omitted.
      */
     timezone?: string;
     startDate?: Date | null;
@@ -58,11 +57,8 @@ export interface CreatePriceListInput {
 }
 
 /**
- * `valueType` is intentionally NOT updatable here. The interpretation of
- * every item under this list depends on it; flipping the type mid-life would
- * silently change pricing semantics. To switch type the merchandiser must
- * create a new list. `timezone`, by contrast, may be updated — it changes
- * how the window is evaluated but not the stored item values.
+ * `valueType` is intentionally NOT updatable here — flipping it mid-life
+ * would silently re-interpret every item value. `timezone` may be updated.
  */
 export interface UpdatePriceListInput {
     id: ID;
@@ -78,7 +74,8 @@ export interface UpdatePriceListInput {
 export interface AssignPriceListToChannelInput {
     priceListId: ID;
     channelId: ID;
-    groupId: ID;
+    /** Optional — falls back to the target channel's default group. */
+    groupId?: ID;
 }
 
 @Injectable()
@@ -91,26 +88,24 @@ export class PriceListService {
         private translator: TranslatorService,
     ) {}
 
+    private static readonly DETAIL_RELATIONS = [
+        'originChannel',
+        'translations',
+        'channels',
+        'groupMemberships',
+        'groupMemberships.channel',
+        'groupMemberships.group',
+        'groupMemberships.group.translations',
+    ];
+
     findAll(
         ctx: RequestContext,
         options?: ListQueryOptions<PriceList>,
         opts: { includeDeleted?: boolean } = {},
     ): Promise<PaginatedList<PriceList>> {
-        // `includeDeleted` lets the dashboard "Show pending deletion"
-        // toggle surface lists whose `deletedAt` is set. Without it,
-        // the default UX matches the historical Stage 1B behavior:
-        // soft-deleted lists are invisible.
         return this.listQueryBuilder
             .build(PriceList, options, {
-                relations: [
-                    'originChannel',
-                    'translations',
-                    'channels',
-                    'groupMemberships',
-                    'groupMemberships.group',
-                    'groupMemberships.group.translations',
-                    'groupMemberships.group.channel',
-                ],
+                relations: PriceListService.DETAIL_RELATIONS,
                 where: opts.includeDeleted ? {} : { deletedAt: IsNull() },
                 ctx,
                 channelId: ctx.channelId,
@@ -127,51 +122,28 @@ export class PriceListService {
         id: ID,
         opts: { includeDeleted?: boolean } = {},
     ): Promise<PriceList | undefined> {
-        // We DON'T use `connection.findOneInChannel(...)` here even though it
-        // looks like the right tool: that helper sets up a query builder with
-        // alias 'entity' AND calls `setFindOptions({ relationLoadStrategy:
-        // 'query', relations: [...] })` — the per-relation sub-queries it
-        // emits reference the entity's lowercased class name ('pricelist')
-        // as an alias, producing
-        //   "missing FROM-clause entry for table 'pricelist'"
-        // at runtime. Reproducible against TypeORM's relationLoadStrategy
-        // when the QB alias differs from the metadata-derived alias.
-        //
-        // Standard repo.findOne() uses the metadata-derived alias
-        // consistently. We add the channel filter via `where: { channels: {
-        // id: ctx.channelId } }` instead — TypeORM expands that to the
-        // appropriate join automatically.
-        //
-        // `includeDeleted` lets the detail page load a pending-deletion
-        // list (deletedAt set, not yet purged) so the merchandiser can
-        // view it and Restore — without it the list shows in the
-        // "pending deletion" toggle yet 404s on click. Internal callers
-        // keep the default (exclude deleted).
         const list = await this.connection
             .getRepository(ctx, PriceList)
             .findOne({
                 where: {
                     id,
                     ...(opts.includeDeleted ? {} : { deletedAt: IsNull() }),
-                    channels: { id: ctx.channelId },
                 },
-                relations: [
-                    'originChannel',
-                    'translations',
-                    'channels',
-                    'groupMemberships',
-                    'groupMemberships.group',
-                    'groupMemberships.group.translations',
-                    'groupMemberships.group.channel',
-                ],
-                // assignedCustomers / assignedCustomerGroups intentionally NOT
-                // loaded here — fetched via paginated queries
-                // (`priceListAssignedCustomers`, `priceListAssignedCustomerGroups`).
-                // A merchandiser pricelist can carry several-thousand-entry
-                // direct customer assignments and inlining was a payload + UI
-                // killer.
+                relations: PriceListService.DETAIL_RELATIONS,
             });
-        return list ? this.translatePriceList(list, ctx) : undefined;
+        // Access scoping is enforced in JS rather than via a `channels`
+        // relation-where: filtering on `channels` in the query prunes the
+        // loaded collection to the active channel, so the detail view could
+        // never show all the channels a list is shared to. Load the full
+        // relation, then gate access here (the list must reach the active
+        // channel to be visible).
+        if (
+            !list ||
+            !list.channels?.some(c => idsAreEqual(c.id, ctx.channelId))
+        ) {
+            return undefined;
+        }
+        return this.translatePriceList(list, ctx);
     }
 
     findByCode(ctx: RequestContext, code: string): Promise<PriceList | undefined> {
@@ -207,11 +179,6 @@ export class PriceListService {
         const groupId = await this.resolveCreateGroupId(ctx, input.groupId);
         const activeChannel = await this.requireChannel(ctx, ctx.channelId);
 
-        // Translatable saver handles the entity + translation rows in one tx.
-        // Pass `beforeSave` to set the non-translated fields on the entity
-        // instance before the save commits — cleaner than mixing them into
-        // the typed `input` (which is `TranslatedInput<T>` and only carries
-        // the `translations` array).
         const list = await this.translatableSaver.create({
             ctx,
             input: {
@@ -236,25 +203,23 @@ export class PriceListService {
             },
         });
 
-        // Bind the list to its default group on the origin channel via the
-        // group-membership pivot (the per-channel group binding).
-        const membership = new PriceListGroupMembership({
-            priceListId: list.id,
-            groupId,
-        });
+        // Bind to the resolved group on the origin channel.
         await this.connection
             .getRepository(ctx, PriceListGroupMembership)
-            .save(membership);
+            .save(
+                new PriceListGroupMembership({
+                    priceListId: list.id,
+                    channelId: ctx.channelId,
+                    groupId,
+                }),
+            );
 
         return this.findOne(ctx, list.id) as Promise<PriceList>;
     }
 
     async update(ctx: RequestContext, input: UpdatePriceListInput): Promise<PriceList> {
-        const list = await this.assertEditableList(ctx, input.id);
+        const list = await this.assertContentEditable(ctx, input.id);
 
-        // Non-translated fields: assign directly on the entity. (Don't touch
-        // name/description here — those are `LocaleString` and live on
-        // `PriceListTranslation` rows, handled by `translatableSaver` below.)
         if (input.code !== undefined) list.code = input.code;
         if (input.timezone !== undefined) list.timezone = input.timezone;
         if (input.priority !== undefined) list.priority = input.priority;
@@ -263,8 +228,6 @@ export class PriceListService {
         if (input.endDate !== undefined) list.endDate = input.endDate;
         await this.connection.getRepository(ctx, PriceList).save(list);
 
-        // Translated fields: route through the saver, which diffs the
-        // `translations` array and applies inserts/updates as needed.
         if (input.translations) {
             await this.translatableSaver.update({
                 ctx,
@@ -284,18 +247,12 @@ export class PriceListService {
     }
 
     /**
-     * O(1) soft delete: a single UPDATE on the parent. Items are *not*
-     * touched — they're filtered out of every item query by the join on
-     * `priceList.deletedAt IS NULL`. Avoids the cascading per-row UPDATE
-     * that would otherwise scale linearly with item count.
-     *
-     * Since Stage 1E, soft-deleted lists are also subject to the
-     * `purgePendingDeletionTask` cron, which hard-deletes them after the
-     * configured grace period. The merchandiser can call `restore` any
-     * time before the cron picks them up.
+     * O(1) soft delete: a single UPDATE on the parent. Items are filtered
+     * out of every item query by `priceList.deletedAt IS NULL`. Subject to
+     * the `purgePendingDeletionTask` cron after the grace period.
      */
     async softDelete(ctx: RequestContext, id: ID): Promise<DeletionResponse> {
-        const list = await this.assertEditableList(ctx, id);
+        const list = await this.assertContentEditable(ctx, id);
         await this.connection
             .getRepository(ctx, PriceList)
             .update({ id: list.id }, { deletedAt: new Date() });
@@ -303,20 +260,14 @@ export class PriceListService {
     }
 
     /**
-     * Clear `deletedAt` on a pricelist that's still in its grace period
-     * (i.e. soft-deleted but not yet purged). Throws if the list is not
-     * actually pending deletion, or if the active channel isn't the
-     * origin — restoring from a non-origin channel would be inconsistent
-     * with the rest of the edit guards.
-     *
-     * Returns the now-active list, fully translated and relation-loaded
-     * (same shape as `findOne`), so the dashboard can refresh its row
-     * without a follow-up fetch.
+     * Clear `deletedAt` on a pricelist still in its grace period. Throws if
+     * the active channel isn't the origin (consistent with the content
+     * edit guard). Idempotent.
      */
     async restore(ctx: RequestContext, id: ID): Promise<PriceList> {
         const list = await this.connection
             .getRepository(ctx, PriceList)
-            .findOne({ where: { id } });
+            .findOne({ where: { id, channels: { id: ctx.channelId } } });
         if (!list) {
             throw new UserInputError(`PriceList ${id} not found`);
         }
@@ -324,8 +275,6 @@ export class PriceListService {
             throw new IllegalOperationError(ERR_PRICELIST_READONLY_NON_ORIGIN_CHANNEL);
         }
         if (list.deletedAt === null) {
-            // Idempotent: nothing to do, return the list as-is rather
-            // than error out — re-running Restore should be safe.
             return this.findOne(ctx, id) as Promise<PriceList>;
         }
         await this.connection
@@ -335,17 +284,10 @@ export class PriceListService {
     }
 
     /**
-     * Hard-delete pricelists whose grace period has expired. Called by
-     * the `purgePendingDeletionTask` scheduled task.
-     *
-     * Idempotent + interruption-safe: the WHERE clause naturally excludes
-     * rows already deleted, so re-running picks up where a killed run
-     * left off. Each batch is its own transaction — an SIGTERM mid-batch
-     * rolls back that batch only, and the cascade FKs guarantee child
-     * tables (`price_list_item`, translations, group memberships,
-     * channel pivots, customer/group pivots) follow on row deletion.
-     *
-     * Returns the count of pricelists actually purged, for telemetry.
+     * Hard-delete pricelists whose grace period has expired. Called by the
+     * `purgePendingDeletionTask`. Idempotent + interruption-safe; cascade
+     * FKs clean up child tables (items, translations, memberships, channel
+     * access, etc.). Returns the count purged.
      */
     async purgePending(
         ctx: RequestContext,
@@ -353,11 +295,6 @@ export class PriceListService {
     ): Promise<number> {
         const repo = this.connection.getRepository(ctx, PriceList);
         let totalPurged = 0;
-        // Outer loop drains the cohort. Each iteration pulls one batch
-        // worth of expired IDs and deletes them in a transaction. If a
-        // batch fails or the process is killed, the transaction rolls
-        // back; the next tick re-selects the same IDs (they're still
-        // in DB) and tries again.
         // eslint-disable-next-line no-constant-condition
         while (true) {
             const candidateIds = await repo
@@ -382,9 +319,6 @@ export class PriceListService {
                     .execute();
             });
             totalPurged += candidateIds.length;
-            // Defensive: if a batch came back smaller than batchSize it
-            // means we've drained the cohort — short-circuit instead of
-            // spinning on an empty subsequent query.
             if (candidateIds.length < opts.batchSize) {
                 break;
             }
@@ -392,22 +326,26 @@ export class PriceListService {
         return totalPurged;
     }
 
-    // === Channel sharing — splits the binding into two writes ===
+    // === Channel sharing ===
 
+    /**
+     * Share a list to a channel. Origin-guarded (you push from where the
+     * list lives). The destination `groupId` is optional — when omitted
+     * the list lands in the target channel's default group, leaving the
+     * receiving channel's admin to re-bucket it later.
+     */
     async assignToChannel(
         ctx: RequestContext,
         input: AssignPriceListToChannelInput,
     ): Promise<PriceList> {
-        const list = await this.assertEditableList(ctx, input.priceListId);
+        const list = await this.assertContentEditable(ctx, input.priceListId);
 
-        const targetGroup = await this.connection
-            .getRepository(ctx, PriceListGroup)
-            .findOne({ where: { id: input.groupId } });
-        if (!targetGroup || !idsAreEqual(targetGroup.channelId, input.channelId)) {
-            throw new UserInputError(ERR_PRICELIST_GROUP_CHANNEL_MISMATCH);
-        }
+        const groupId = await this.resolveGroupForChannel(
+            ctx,
+            input.channelId,
+            input.groupId,
+        );
 
-        // Add standard ChannelAware membership (drives findOneInChannel).
         const targetChannel = await this.requireChannel(ctx, input.channelId);
         const withChannels = await this.connection
             .getRepository(ctx, PriceList)
@@ -415,10 +353,7 @@ export class PriceListService {
         if (!withChannels) {
             throw new UserInputError(`PriceList ${list.id} not found`);
         }
-        const channelExists = withChannels.channels.some(c =>
-            idsAreEqual(c.id, input.channelId),
-        );
-        if (channelExists) {
+        if (withChannels.channels.some(c => idsAreEqual(c.id, input.channelId))) {
             throw new UserInputError(
                 `PriceList ${input.priceListId} is already shared to channel ${input.channelId}`,
             );
@@ -426,72 +361,81 @@ export class PriceListService {
         withChannels.channels.push(targetChannel);
         await this.connection.getRepository(ctx, PriceList).save(withChannels);
 
-        // Add per-channel group binding via membership pivot. The group's own
-        // channelId encodes "which channel this binding applies to".
-        const membership = new PriceListGroupMembership({
-            priceListId: list.id,
-            groupId: input.groupId,
-        });
         await this.connection
             .getRepository(ctx, PriceListGroupMembership)
-            .save(membership);
+            .save(
+                new PriceListGroupMembership({
+                    priceListId: list.id,
+                    channelId: input.channelId,
+                    groupId,
+                }),
+            );
 
         return this.findOne(ctx, list.id) as Promise<PriceList>;
     }
 
+    /**
+     * Un-share a list from a channel. Allowed from the origin channel
+     * (which can remove any target) or from the target channel itself
+     * (an admin removing the list from their own channel) — D7. The origin
+     * channel cannot be removed (delete the list instead).
+     */
     async removeFromChannel(
         ctx: RequestContext,
         priceListId: ID,
         channelId: ID,
     ): Promise<PriceList> {
-        const list = await this.assertEditableList(ctx, priceListId);
+        const list = await this.connection
+            .getRepository(ctx, PriceList)
+            .findOne({
+                where: { id: priceListId, deletedAt: IsNull() },
+                relations: ['channels'],
+            });
+        if (!list) {
+            throw new UserInputError(`PriceList ${priceListId} not found`);
+        }
         if (idsAreEqual(channelId, list.originChannelId)) {
             throw new UserInputError(
                 `Cannot remove a PriceList from its origin channel; delete the list instead`,
             );
         }
-
-        // Drop the standard ChannelAware membership.
-        const withChannels = await this.connection
-            .getRepository(ctx, PriceList)
-            .findOne({ where: { id: list.id }, relations: ['channels'] });
-        if (withChannels) {
-            withChannels.channels = withChannels.channels.filter(
-                c => !idsAreEqual(c.id, channelId),
-            );
-            await this.connection.getRepository(ctx, PriceList).save(withChannels);
+        const isOrigin = idsAreEqual(ctx.channelId, list.originChannelId);
+        const isSelfRemoval = idsAreEqual(ctx.channelId, channelId);
+        if (!isOrigin && !isSelfRemoval) {
+            throw new IllegalOperationError(ERR_PRICELIST_READONLY_NON_ORIGIN_CHANNEL);
         }
 
-        // Drop the per-channel group binding(s). A list could in theory have
-        // multiple memberships pointing at groups on the same channel only
-        // if the service-layer guard fails — be defensive and remove all.
+        list.channels = list.channels.filter(c => !idsAreEqual(c.id, channelId));
+        await this.connection.getRepository(ctx, PriceList).save(list);
+
+        // Drop the per-channel group binding and access scope for that channel.
         await this.connection
             .getRepository(ctx, PriceListGroupMembership)
-            .createQueryBuilder()
-            .delete()
-            .where(
-                'priceListId = :priceListId AND groupId IN ' +
-                    '(SELECT id FROM price_list_group WHERE "channelId" = :channelId)',
-                { priceListId, channelId },
-            )
-            .execute();
+            .delete({ priceListId, channelId });
+        await this.connection
+            .getRepository(ctx, PriceListChannelAccess)
+            .delete({ priceListId, channelId });
 
-        return this.findOne(ctx, priceListId) as Promise<PriceList>;
+        // `findOne(ctx, …)` is channel-scoped, so on a self-removal
+        // (ctx.channel === the channel just dropped) it would return null on
+        // a non-nullable field. Re-fetch without the channel filter for the
+        // return value — the actor performed an authorized action and just
+        // needs the updated entity back.
+        const result = await this.connection
+            .getRepository(ctx, PriceList)
+            .findOne({
+                where: { id: priceListId },
+                relations: PriceListService.DETAIL_RELATIONS,
+            });
+        return result ? this.translatePriceList(result, ctx) : list;
     }
 
     /**
-     * Reassign which group a pricelist belongs to **on a given channel**.
-     * The per-channel binding lives in `PriceListGroupMembership`; the
-     * channel is implicit via `group.channelId` (groups are
-     * channel-local). So "change the group on channel X" means: find the
-     * membership whose group sits on channel X and repoint it at the new
-     * group (which must also sit on channel X).
-     *
-     * Guards:
-     *   - only the origin channel may edit the list (standard guard)
-     *   - the target group must belong to `channelId`
-     *   - a membership for that channel must already exist (you change an
-     *     existing binding, you don't create one — that's `assignToChannel`)
+     * Reassign which group a pricelist belongs to **on a given channel** —
+     * a channel-local action (NOT origin-guarded): allowed for whoever
+     * holds `AssignPriceListGroup` on `channelId`, even if the list's
+     * content is owned by another origin. Repoints the membership for that
+     * channel at `groupId` (which must be assigned to `channelId`).
      */
     async changeGroup(
         ctx: RequestContext,
@@ -499,54 +443,33 @@ export class PriceListService {
         channelId: ID,
         groupId: ID,
     ): Promise<PriceList> {
-        const list = await this.assertEditableList(ctx, priceListId);
+        await this.assertChannelLocalAction(ctx, priceListId, channelId);
 
-        const targetGroup = await this.connection
-            .getRepository(ctx, PriceListGroup)
-            .findOne({ where: { id: groupId } });
-        if (!targetGroup || !idsAreEqual(targetGroup.channelId, channelId)) {
-            throw new UserInputError(ERR_PRICELIST_GROUP_CHANNEL_MISMATCH);
-        }
+        const targetGroupId = await this.resolveGroupForChannel(ctx, channelId, groupId);
 
-        // Find the existing membership for this channel — i.e. the
-        // membership row whose group is on `channelId`.
-        const memberships = await this.connection
+        const current = await this.connection
             .getRepository(ctx, PriceListGroupMembership)
-            .find({
-                where: { priceListId: list.id },
-                relations: ['group'],
-            });
-        const current = memberships.find(m =>
-            idsAreEqual(m.group.channelId, channelId),
-        );
+            .findOne({ where: { priceListId, channelId } });
         if (!current) {
             throw new UserInputError(
                 `PriceList ${priceListId} has no group binding on channel ${channelId}`,
             );
         }
-
-        // No-op if already pointing at the requested group.
-        if (idsAreEqual(current.groupId, groupId)) {
+        if (idsAreEqual(current.groupId, targetGroupId)) {
             return this.findOne(ctx, priceListId) as Promise<PriceList>;
         }
-
-        // Targeted column update — NOT entity .save(). `current` was
-        // loaded with its `group` relation, so saving the entity would
-        // make TypeORM re-derive groupId from the still-old `group`
-        // object and silently discard the scalar change (the "toast
-        // says success but DB unchanged" bug). Updating the column
-        // directly avoids the relation taking precedence.
+        // Targeted column update — NOT entity .save() (which would re-derive
+        // groupId from a loaded relation and discard the change).
         await this.connection
             .getRepository(ctx, PriceListGroupMembership)
-            .update({ id: current.id }, { groupId });
+            .update({ id: current.id }, { groupId: targetGroupId });
 
         return this.findOne(ctx, priceListId) as Promise<PriceList>;
     }
 
     /**
      * Every pricelist bound to a group (via the membership pivot),
-     * paginated. Backs the "pricelists in this group" block on the
-     * group detail page.
+     * paginated. Backs the "pricelists in this group" block.
      */
     findByGroup(
         ctx: RequestContext,
@@ -557,170 +480,21 @@ export class PriceListService {
             relations: ['originChannel', 'translations'],
             where: { deletedAt: IsNull() },
             ctx,
+            // ChannelAware scoping: never surface lists from other channels
+            // even if the group is shared across channels.
+            channelId: ctx.channelId,
         });
         qb.innerJoin(
             'price_list_group_membership',
             'plgm',
-            'plgm."priceListId" = pricelist.id AND plgm."groupId" = :gid',
-            { gid: groupId },
+            'plgm."priceListId" = pricelist.id AND plgm."groupId" = :gid ' +
+                'AND plgm."channelId" = :cid',
+            { gid: groupId, cid: ctx.channelId },
         );
-        return qb
-            .getManyAndCount()
-            .then(([items, totalItems]) => ({
-                items: items.map(pl => this.translatePriceList(pl, ctx)),
-                totalItems,
-            }));
-    }
-
-    // === Customer / customer-group assignment management ===
-
-    async setAssignedToEveryone(
-        ctx: RequestContext,
-        priceListId: ID,
-        assigned: boolean,
-    ): Promise<PriceList> {
-        await this.assertEditableList(ctx, priceListId);
-        await this.connection
-            .getRepository(ctx, PriceList)
-            .update({ id: priceListId }, { assignedToEveryone: assigned });
-        return this.findOne(ctx, priceListId) as Promise<PriceList>;
-    }
-
-    /**
-     * Paginated lookup of customers directly assigned to a price list.
-     *
-     * Replaces the SDL `priceList.assignedCustomers` inline array, which was
-     * unworkable for lists with thousands of assignments — every detail-page
-     * load would inline the full list, blowing up payload size and the
-     * dashboard render. Routes through ListQueryBuilder for the standard
-     * skip/take/sort machinery; `filter` is applied separately as an ILIKE
-     * substring match against email/first/last name (the merchandiser-facing
-     * fields).
-     *
-     * The M2M join from Customer → PriceList is one-directional (only
-     * declared on PriceList), so we join the pivot table directly. The
-     * pivot identifier (`price_list_assigned_customers_customer` with
-     * camelCase FK columns) is TypeORM's default — confirmed against the
-     * Stage-1B migration.
-     */
-    findAssignedCustomers(
-        ctx: RequestContext,
-        priceListId: ID,
-        options?: { skip?: number; take?: number; filter?: string },
-    ): Promise<PaginatedList<Customer>> {
-        const { filter, ...listOpts } = options ?? {};
-        const qb = this.listQueryBuilder.build(Customer, listOpts, { ctx });
-        qb.innerJoin(
-            'price_list_assigned_customers_customer',
-            'plac',
-            'plac."customerId" = customer.id AND plac."priceListId" = :pid',
-            { pid: priceListId },
-        );
-        if (filter && filter.trim().length > 0) {
-            qb.andWhere(
-                '(' +
-                    'LOWER(customer."emailAddress") LIKE :flt OR ' +
-                    'LOWER(customer."firstName") LIKE :flt OR ' +
-                    'LOWER(customer."lastName") LIKE :flt' +
-                    ')',
-                { flt: `%${filter.trim().toLowerCase()}%` },
-            );
-        }
-        return qb
-            .getManyAndCount()
-            .then(([items, totalItems]) => ({ items, totalItems }));
-    }
-
-    /** Paginated lookup of customer groups assigned to a price list. See `findAssignedCustomers`. */
-    findAssignedCustomerGroups(
-        ctx: RequestContext,
-        priceListId: ID,
-        options?: { skip?: number; take?: number; filter?: string },
-    ): Promise<PaginatedList<CustomerGroup>> {
-        const { filter, ...listOpts } = options ?? {};
-        const qb = this.listQueryBuilder.build(CustomerGroup, listOpts, { ctx });
-        qb.innerJoin(
-            'price_list_assigned_customer_groups_customer_group',
-            'placg',
-            'placg."customerGroupId" = customer_group.id AND placg."priceListId" = :pid',
-            { pid: priceListId },
-        );
-        if (filter && filter.trim().length > 0) {
-            qb.andWhere('LOWER(customer_group."name") LIKE :flt', {
-                flt: `%${filter.trim().toLowerCase()}%`,
-            });
-        }
-        return qb
-            .getManyAndCount()
-            .then(([items, totalItems]) => ({ items, totalItems }));
-    }
-
-    async addAssignedCustomers(
-        ctx: RequestContext,
-        priceListId: ID,
-        customerIds: ID[],
-    ): Promise<PriceList> {
-        await this.assertEditableList(ctx, priceListId);
-        const list = await this.requireWithCustomers(ctx, priceListId);
-        const customers = await this.connection
-            .getRepository(ctx, Customer)
-            .findByIds(customerIds);
-        const existing = new Set(list.assignedCustomers.map(c => String(c.id)));
-        list.assignedCustomers = [
-            ...list.assignedCustomers,
-            ...customers.filter(c => !existing.has(String(c.id))),
-        ];
-        await this.connection.getRepository(ctx, PriceList).save(list);
-        return this.findOne(ctx, priceListId) as Promise<PriceList>;
-    }
-
-    async removeAssignedCustomers(
-        ctx: RequestContext,
-        priceListId: ID,
-        customerIds: ID[],
-    ): Promise<PriceList> {
-        await this.assertEditableList(ctx, priceListId);
-        const list = await this.requireWithCustomers(ctx, priceListId);
-        const removeSet = new Set(customerIds.map(String));
-        list.assignedCustomers = list.assignedCustomers.filter(
-            c => !removeSet.has(String(c.id)),
-        );
-        await this.connection.getRepository(ctx, PriceList).save(list);
-        return this.findOne(ctx, priceListId) as Promise<PriceList>;
-    }
-
-    async addAssignedCustomerGroups(
-        ctx: RequestContext,
-        priceListId: ID,
-        customerGroupIds: ID[],
-    ): Promise<PriceList> {
-        await this.assertEditableList(ctx, priceListId);
-        const list = await this.requireWithCustomerGroups(ctx, priceListId);
-        const cgs = await this.connection
-            .getRepository(ctx, CustomerGroup)
-            .findByIds(customerGroupIds);
-        const existing = new Set(list.assignedCustomerGroups.map(c => String(c.id)));
-        list.assignedCustomerGroups = [
-            ...list.assignedCustomerGroups,
-            ...cgs.filter(c => !existing.has(String(c.id))),
-        ];
-        await this.connection.getRepository(ctx, PriceList).save(list);
-        return this.findOne(ctx, priceListId) as Promise<PriceList>;
-    }
-
-    async removeAssignedCustomerGroups(
-        ctx: RequestContext,
-        priceListId: ID,
-        customerGroupIds: ID[],
-    ): Promise<PriceList> {
-        await this.assertEditableList(ctx, priceListId);
-        const list = await this.requireWithCustomerGroups(ctx, priceListId);
-        const removeSet = new Set(customerGroupIds.map(String));
-        list.assignedCustomerGroups = list.assignedCustomerGroups.filter(
-            c => !removeSet.has(String(c.id)),
-        );
-        await this.connection.getRepository(ctx, PriceList).save(list);
-        return this.findOne(ctx, priceListId) as Promise<PriceList>;
+        return qb.getManyAndCount().then(([items, totalItems]) => ({
+            items: items.map(pl => this.translatePriceList(pl, ctx)),
+            totalItems,
+        }));
     }
 
     // === Guards / helpers ===
@@ -729,16 +503,30 @@ export class PriceListService {
         ctx: RequestContext,
         explicitGroupId?: ID,
     ): Promise<ID> {
+        return this.resolveGroupForChannel(ctx, ctx.channelId, explicitGroupId);
+    }
+
+    /**
+     * Resolve a group id for a channel: validate an explicit group is
+     * assigned to the channel, or fall back to the channel's default.
+     */
+    private async resolveGroupForChannel(
+        ctx: RequestContext,
+        channelId: ID,
+        explicitGroupId?: ID,
+    ): Promise<ID> {
         if (explicitGroupId) {
             const group = await this.connection
                 .getRepository(ctx, PriceListGroup)
-                .findOne({ where: { id: explicitGroupId } });
-            if (!group || !idsAreEqual(group.channelId, ctx.channelId)) {
+                .findOne({
+                    where: { id: explicitGroupId, channels: { id: channelId } },
+                });
+            if (!group) {
                 throw new UserInputError(ERR_PRICELIST_GROUP_CHANNEL_MISMATCH);
             }
             return group.id;
         }
-        const def = await this.groupService.findDefaultForChannel(ctx, ctx.channelId);
+        const def = await this.groupService.findDefaultForChannel(ctx, channelId);
         return def.id;
     }
 
@@ -752,10 +540,22 @@ export class PriceListService {
         return channel;
     }
 
-    private async assertEditableList(ctx: RequestContext, id: ID): Promise<PriceList> {
+    /**
+     * Content-edit guard: the active channel MUST be the list's origin.
+     * Gates code/items/prices/validity/delete mutations.
+     */
+    private async assertContentEditable(
+        ctx: RequestContext,
+        id: ID,
+    ): Promise<PriceList> {
         const list = await this.connection
             .getRepository(ctx, PriceList)
-            .findOne({ where: { id, deletedAt: IsNull() } });
+            .findOne({
+                // Channel-scoped: a list not shared to the active channel is
+                // reported "not found" rather than leaking its existence via
+                // the origin-only error (ID enumeration).
+                where: { id, deletedAt: IsNull(), channels: { id: ctx.channelId } },
+            });
         if (!list) {
             throw new UserInputError(`PriceList ${id} not found`);
         }
@@ -765,38 +565,37 @@ export class PriceListService {
         return list;
     }
 
+    /** Exposed for the item service / resolvers gating content mutations. */
     async assertEditableListPublic(ctx: RequestContext, id: ID): Promise<PriceList> {
-        return this.assertEditableList(ctx, id);
+        return this.assertContentEditable(ctx, id);
     }
 
-    private async requireWithCustomers(
+    /**
+     * Channel-local guard: the action targets the active channel and the
+     * list is shared to it. NOT origin-guarded. Gates group binding (and,
+     * via PriceListAccessService, access management).
+     */
+    private async assertChannelLocalAction(
         ctx: RequestContext,
         priceListId: ID,
+        channelId: ID,
     ): Promise<PriceList> {
+        if (!idsAreEqual(ctx.channelId, channelId)) {
+            throw new IllegalOperationError(
+                'Action can only target the active channel',
+            );
+        }
         const list = await this.connection
             .getRepository(ctx, PriceList)
             .findOne({
                 where: { id: priceListId, deletedAt: IsNull() },
-                relations: ['assignedCustomers'],
+                relations: ['channels'],
             });
         if (!list) {
             throw new UserInputError(`PriceList ${priceListId} not found`);
         }
-        return list;
-    }
-
-    private async requireWithCustomerGroups(
-        ctx: RequestContext,
-        priceListId: ID,
-    ): Promise<PriceList> {
-        const list = await this.connection
-            .getRepository(ctx, PriceList)
-            .findOne({
-                where: { id: priceListId, deletedAt: IsNull() },
-                relations: ['assignedCustomerGroups'],
-            });
-        if (!list) {
-            throw new UserInputError(`PriceList ${priceListId} not found`);
+        if (!list.channels.some(c => idsAreEqual(c.id, channelId))) {
+            throw new IllegalOperationError(ERR_PRICELIST_NOT_SHARED_TO_CHANNEL);
         }
         return list;
     }

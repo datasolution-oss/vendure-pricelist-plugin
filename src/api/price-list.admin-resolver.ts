@@ -12,10 +12,17 @@ import {
 } from '@vendure/core';
 
 import { PriceList } from '../entities';
-import { priceListPermission } from '../permissions';
+import { PriceListChannelAccess } from '../entities/price-list-channel-access.entity';
+import {
+    assignPriceListGroupPermission,
+    managePriceListAccessPermission,
+    priceListPermission,
+    sharePriceListPermission,
+} from '../permissions';
 import {
     AssignPriceListToChannelInput,
     CreatePriceListInput,
+    PriceListAccessService,
     PriceListService,
     UpdatePriceListInput,
 } from '../services';
@@ -28,7 +35,10 @@ interface AssignedListOptions {
 
 @Resolver()
 export class PriceListAdminResolver {
-    constructor(private priceListService: PriceListService) {}
+    constructor(
+        private priceListService: PriceListService,
+        private accessService: PriceListAccessService,
+    ) {}
 
     @Query()
     @Allow(priceListPermission.Read)
@@ -37,8 +47,7 @@ export class PriceListAdminResolver {
         @Args() args: { id: ID },
     ): Promise<PriceList | undefined> {
         // includeDeleted: the detail page must be able to open a
-        // pending-deletion list (visible in the "show pending" toggle)
-        // to view it and Restore — otherwise clicking it 404s.
+        // pending-deletion list to view it and Restore.
         return this.priceListService.findOne(ctx, args.id, {
             includeDeleted: true,
         });
@@ -53,23 +62,29 @@ export class PriceListAdminResolver {
             options?: { skip?: number; take?: number; includeDeleted?: boolean };
         },
     ): Promise<PaginatedList<PriceList>> {
-        // Strip `includeDeleted` off the listQueryOptions before forwarding —
-        // it isn't a column-bound field, so passing it through would
-        // confuse the ListQueryBuilder's filter/sort generator. The
-        // service consumes it from the second parameter instead.
         const { includeDeleted, ...listOptions } = args.options ?? {};
         return this.priceListService.findAll(ctx, listOptions, { includeDeleted });
     }
 
     @Query()
     @Allow(priceListPermission.Read)
+    async priceListChannelAccess(
+        @Ctx() ctx: RequestContext,
+        @Args() args: { priceListId: ID; channelId: ID },
+    ): Promise<PriceListChannelAccess | null> {
+        return this.accessService.getAccess(ctx, args.priceListId, args.channelId);
+    }
+
+    @Query()
+    @Allow(priceListPermission.Read)
     async priceListAssignedCustomers(
         @Ctx() ctx: RequestContext,
-        @Args() args: { priceListId: ID; options?: AssignedListOptions },
+        @Args() args: { priceListId: ID; channelId: ID; options?: AssignedListOptions },
     ): Promise<PaginatedList<Customer>> {
-        return this.priceListService.findAssignedCustomers(
+        return this.accessService.findAssignedCustomers(
             ctx,
             args.priceListId,
+            args.channelId,
             args.options,
         );
     }
@@ -78,11 +93,12 @@ export class PriceListAdminResolver {
     @Allow(priceListPermission.Read)
     async priceListAssignedCustomerGroups(
         @Ctx() ctx: RequestContext,
-        @Args() args: { priceListId: ID; options?: AssignedListOptions },
+        @Args() args: { priceListId: ID; channelId: ID; options?: AssignedListOptions },
     ): Promise<PaginatedList<CustomerGroup>> {
-        return this.priceListService.findAssignedCustomerGroups(
+        return this.accessService.findAssignedCustomerGroups(
             ctx,
             args.priceListId,
+            args.channelId,
             args.options,
         );
     }
@@ -129,7 +145,7 @@ export class PriceListAdminResolver {
 
     @Mutation()
     @Transaction()
-    @Allow(priceListPermission.Update)
+    @Allow(sharePriceListPermission.Permission)
     async assignPriceListToChannel(
         @Ctx() ctx: RequestContext,
         @Args() args: { input: AssignPriceListToChannelInput },
@@ -139,7 +155,7 @@ export class PriceListAdminResolver {
 
     @Mutation()
     @Transaction()
-    @Allow(priceListPermission.Update)
+    @Allow(sharePriceListPermission.Permission)
     async removePriceListFromChannel(
         @Ctx() ctx: RequestContext,
         @Args() args: { priceListId: ID; channelId: ID },
@@ -149,7 +165,7 @@ export class PriceListAdminResolver {
 
     @Mutation()
     @Transaction()
-    @Allow(priceListPermission.Update)
+    @Allow(assignPriceListGroupPermission.Permission)
     async changePriceListGroup(
         @Ctx() ctx: RequestContext,
         @Args() args: { priceListId: ID; channelId: ID; groupId: ID },
@@ -171,55 +187,80 @@ export class PriceListAdminResolver {
         return this.priceListService.findByGroup(ctx, args.groupId, args.options);
     }
 
-    // === Assignment management ===
+    // === Channel-scoped access management ===
 
     @Mutation()
     @Transaction()
-    @Allow(priceListPermission.Update)
+    @Allow(managePriceListAccessPermission.Permission)
     async setPriceListAssignedToEveryone(
         @Ctx() ctx: RequestContext,
-        @Args() args: { priceListId: ID; assigned: boolean },
-    ): Promise<PriceList> {
-        return this.priceListService.setAssignedToEveryone(ctx, args.priceListId, args.assigned);
+        @Args() args: { priceListId: ID; channelId: ID; assigned: boolean },
+    ): Promise<PriceListChannelAccess> {
+        return this.accessService.setAssignedToEveryone(
+            ctx,
+            args.priceListId,
+            args.channelId,
+            args.assigned,
+        );
     }
 
     @Mutation()
     @Transaction()
-    @Allow(priceListPermission.Update)
+    @Allow(managePriceListAccessPermission.Permission)
     async addCustomersToPriceList(
         @Ctx() ctx: RequestContext,
-        @Args() args: { priceListId: ID; customerIds: ID[] },
-    ): Promise<PriceList> {
-        return this.priceListService.addAssignedCustomers(ctx, args.priceListId, args.customerIds);
+        @Args() args: { priceListId: ID; channelId: ID; customerIds: ID[] },
+    ): Promise<PriceListChannelAccess> {
+        return this.accessService.addCustomers(
+            ctx,
+            args.priceListId,
+            args.channelId,
+            args.customerIds,
+        );
     }
 
     @Mutation()
     @Transaction()
-    @Allow(priceListPermission.Update)
+    @Allow(managePriceListAccessPermission.Permission)
     async removeCustomersFromPriceList(
         @Ctx() ctx: RequestContext,
-        @Args() args: { priceListId: ID; customerIds: ID[] },
-    ): Promise<PriceList> {
-        return this.priceListService.removeAssignedCustomers(ctx, args.priceListId, args.customerIds);
+        @Args() args: { priceListId: ID; channelId: ID; customerIds: ID[] },
+    ): Promise<PriceListChannelAccess> {
+        return this.accessService.removeCustomers(
+            ctx,
+            args.priceListId,
+            args.channelId,
+            args.customerIds,
+        );
     }
 
     @Mutation()
     @Transaction()
-    @Allow(priceListPermission.Update)
+    @Allow(managePriceListAccessPermission.Permission)
     async addCustomerGroupsToPriceList(
         @Ctx() ctx: RequestContext,
-        @Args() args: { priceListId: ID; customerGroupIds: ID[] },
-    ): Promise<PriceList> {
-        return this.priceListService.addAssignedCustomerGroups(ctx, args.priceListId, args.customerGroupIds);
+        @Args() args: { priceListId: ID; channelId: ID; customerGroupIds: ID[] },
+    ): Promise<PriceListChannelAccess> {
+        return this.accessService.addCustomerGroups(
+            ctx,
+            args.priceListId,
+            args.channelId,
+            args.customerGroupIds,
+        );
     }
 
     @Mutation()
     @Transaction()
-    @Allow(priceListPermission.Update)
+    @Allow(managePriceListAccessPermission.Permission)
     async removeCustomerGroupsFromPriceList(
         @Ctx() ctx: RequestContext,
-        @Args() args: { priceListId: ID; customerGroupIds: ID[] },
-    ): Promise<PriceList> {
-        return this.priceListService.removeAssignedCustomerGroups(ctx, args.priceListId, args.customerGroupIds);
+        @Args() args: { priceListId: ID; channelId: ID; customerGroupIds: ID[] },
+    ): Promise<PriceListChannelAccess> {
+        return this.accessService.removeCustomerGroups(
+            ctx,
+            args.priceListId,
+            args.channelId,
+            args.customerGroupIds,
+        );
     }
 }

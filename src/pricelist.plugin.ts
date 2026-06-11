@@ -3,7 +3,13 @@ import { PluginCommonModule, Type, VendurePlugin } from '@vendure/core';
 import { adminApiExtensions, ALL_RESOLVERS } from './api';
 import { PRICELIST_PLUGIN_OPTIONS } from './constants';
 import { ALL_ENTITIES } from './entities';
-import { priceListGroupPermission, priceListPermission } from './permissions';
+import {
+    assignPriceListGroupPermission,
+    managePriceListAccessPermission,
+    priceListGroupPermission,
+    priceListPermission,
+    sharePriceListPermission,
+} from './permissions';
 import { purgePendingDeletionTask } from './scheduled-tasks/purge-pending-deletion-task';
 import { ALL_SERVICES } from './services';
 import { PluginInitOptions } from './types';
@@ -26,6 +32,9 @@ const DEFAULT_PURGE_BATCH_SIZE = 100;
         config.authOptions.customPermissions.push(
             priceListPermission,
             priceListGroupPermission,
+            sharePriceListPermission,
+            assignPriceListGroupPermission,
+            managePriceListAccessPermission,
         );
 
         // Stage 1E: register the purge-pending-deletion cron task.

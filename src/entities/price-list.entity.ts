@@ -2,8 +2,6 @@ import { DeepPartial, ID } from '@vendure/common/lib/shared-types';
 import {
     Channel,
     ChannelAware,
-    Customer,
-    CustomerGroup,
     HasCustomFields,
     LocaleString,
     SoftDeletable,
@@ -22,6 +20,7 @@ import {
     OneToMany,
 } from 'typeorm';
 
+import { PriceListChannelAccess } from './price-list-channel-access.entity';
 import { PriceListGroupMembership } from './price-list-group-membership.entity';
 import { PriceListItem, PriceListValueType } from './price-list-item.entity';
 import { PriceListTranslation } from './price-list-translation.entity';
@@ -105,21 +104,15 @@ export class PriceList
     channels: Channel[];
 
     /**
-     * Direct customer assignments — this list is accessible to each listed
-     * customer regardless of group membership. Stage 2 lookup ORs this with
-     * `assignedCustomerGroups` and `assignedToEveryone`.
+     * Per-channel customer access scopes. Access (assignedToEveryone +
+     * direct customers + customer groups) is decided per
+     * `(PriceList, Channel)` via `PriceListChannelAccess`, NOT globally on
+     * the list: a list shared to channels A and B may grant different
+     * customers on each. Stage 2 lookup reads the row for the request's
+     * channel. One row per channel the list participates in.
      */
-    @ManyToMany(() => Customer)
-    @JoinTable()
-    assignedCustomers: Customer[];
-
-    @ManyToMany(() => CustomerGroup)
-    @JoinTable()
-    assignedCustomerGroups: CustomerGroup[];
-
-    /** Global access — every customer can see this list. */
-    @Column({ default: false })
-    assignedToEveryone: boolean;
+    @OneToMany(() => PriceListChannelAccess, a => a.priceList)
+    channelAccess: PriceListChannelAccess[];
 
     @OneToMany(() => PriceListTranslation, t => t.base, { eager: true })
     translations: Array<Translation<PriceList>>;
@@ -128,9 +121,10 @@ export class PriceList
     items: PriceListItem[];
 
     /**
-     * Per-channel group bindings. Each membership row points at a
-     * PriceListGroup; the group's `channelId` defines which channel that
-     * binding applies to (groups are channel-local).
+     * Per-channel group bindings `(priceList, channel, group)`. The
+     * membership row carries its own `channelId` (groups are now
+     * ChannelAware and may be shared, so the channel is no longer derived
+     * from the group).
      */
     @OneToMany(() => PriceListGroupMembership, m => m.priceList)
     groupMemberships: PriceListGroupMembership[];

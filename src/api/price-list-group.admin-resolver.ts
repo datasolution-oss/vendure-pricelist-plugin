@@ -48,6 +48,15 @@ export class PriceListGroupAdminResolver {
         return this.priceListGroupService.findByChannel(ctx, args.channelId);
     }
 
+    @Query()
+    @Allow(priceListGroupPermission.Read)
+    async priceListDefaultGroup(
+        @Ctx() ctx: RequestContext,
+        @Args() args: { channelId: ID },
+    ): Promise<PriceListGroup> {
+        return this.priceListGroupService.findDefaultForChannel(ctx, args.channelId);
+    }
+
     @Mutation()
     @Transaction()
     @Allow(priceListGroupPermission.Create)

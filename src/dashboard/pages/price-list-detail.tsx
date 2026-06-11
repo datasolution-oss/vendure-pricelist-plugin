@@ -1,10 +1,9 @@
-import { DateTime } from '@/vdb/components/data-display/date-time.js';
-import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Label } from '@/vdb/components/ui/label.js';
 import { Switch } from '@/vdb/components/ui/switch.js';
+import { Textarea } from '@/vdb/components/ui/textarea.js';
 import {
     Table,
     TableBody,
@@ -12,7 +11,9 @@ import {
     TableHeader,
     TableRow,
 } from '@/vdb/components/ui/table.js';
-import { Textarea } from '@/vdb/components/ui/textarea.js';
+import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
+import { DateTime } from '@/vdb/components/data-display/date-time.js';
+import { api } from '@/vdb/graphql/api.js';
 import {
     Page,
     PageActionBar,
@@ -21,7 +22,7 @@ import {
     PageLayout,
     PageTitle,
 } from '@/vdb/framework/layout-engine/page-layout.js';
-import { api } from '@/vdb/graphql/api.js';
+import { useChannel } from '@/vdb/hooks/use-channel.js';
 import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,7 +31,6 @@ import { RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
-import { ChannelCodeLabel } from '@/vdb/index';
 import { GroupMembershipRow } from '../components/group-membership-row';
 import { PriceListAccessBlock } from '../components/price-list-access-block';
 import { PriceListItemsGrid } from '../components/price-list-items-grid';
@@ -42,7 +42,7 @@ import {
     restorePriceListMutation,
     updatePriceListMutation,
 } from '../gql/mutations';
-import { priceListDetailQuery } from '../gql/queries';
+import { priceListChannelAccessQuery, priceListDetailQuery } from '../gql/queries';
 import type { PriceListDetailResult } from '../gql/types';
 import { useIsEditable } from '../hooks/use-is-editable';
 
@@ -68,6 +68,26 @@ export function PriceListDetailPage() {
 
     const pl = data?.priceList ?? null;
     const isEditable = useIsEditable(pl?.originChannel.id);
+
+    // Active channel: drives the per-channel access scope. Access is a
+    // channel-local action — editable on any channel the list is shared to
+    // (not just the origin), gated server-side by ManagePriceListAccess.
+    const { activeChannel } = useChannel();
+    const activeChannelId = activeChannel ? String(activeChannel.id) : undefined;
+
+    const { data: accessData } = useQuery({
+        queryKey: ['pricelist-channel-access', id, activeChannelId],
+        queryFn: () =>
+            api.query(priceListChannelAccessQuery, {
+                priceListId: id!,
+                channelId: activeChannelId!,
+            } as any) as Promise<{
+                priceListChannelAccess: { id: string; assignedToEveryone: boolean } | null;
+            }>,
+        enabled: !!id && !!activeChannelId,
+    });
+    const assignedToEveryone =
+        accessData?.priceListChannelAccess?.assignedToEveryone ?? false;
 
     // Editable form draft, hydrated from the loaded entity.
     const [code, setCode] = useState('');
@@ -354,19 +374,9 @@ export function PriceListDetailPage() {
                             />
                         </FormRow>
                         <FormRow label={t`Origin channel`}>
-                            <code className="text-sm"><ChannelCodeLabel code={pl.originChannel.code} /></code>
+                            <code className="text-sm">{pl.originChannel.code}</code>
                         </FormRow>
                     </div>
-                </PageBlock>
-
-                <PageBlock column="main" blockId="pricelist-items" title={t`Items`}>
-                    <PriceListItemsGrid
-                        priceListId={pl.id}
-                        valueType={pl.valueType}
-                        availableCurrencyCodes={pl.originChannel.availableCurrencyCodes}
-                        defaultCurrencyCode={pl.originChannel.defaultCurrencyCode}
-                        disabled={!isEditable}
-                    />
                 </PageBlock>
 
                 <PageBlock
@@ -394,21 +404,27 @@ export function PriceListDetailPage() {
                                         key={m.id}
                                         priceListId={pl.id}
                                         membershipId={m.id}
-                                        channelId={m.group.channel.id}
-                                        channelCode={m.group.channel.code}
+                                        channelId={m.channel.id}
+                                        channelCode={m.channel.code}
                                         currentGroupId={m.group.id}
                                         currentGroupCode={m.group.code}
                                         isOrigin={
-                                            m.group.channel.id === pl.originChannel.id
+                                            m.channel.id === pl.originChannel.id
                                         }
-                                        disabled={!isEditable}
+                                        // Group binding is channel-local: only the
+                                        // active channel's row is changeable from here
+                                        // (the server requires ctx.channel === channel).
+                                        disabled={
+                                            isPendingDeletion ||
+                                            m.channel.id !== activeChannelId
+                                        }
                                         onChanged={() =>
                                             queryClient.invalidateQueries({
                                                 queryKey: ['pricelist', id],
                                             })
                                         }
                                         onUnshare={() =>
-                                            unshareMutation.mutate(m.group.channel.id)
+                                            unshareMutation.mutate(m.channel.id)
                                         }
                                     />
                                 ))}
@@ -422,16 +438,32 @@ export function PriceListDetailPage() {
                     )}
                 </PageBlock>
 
+                <PageBlock column="main" blockId="pricelist-items" title={t`Items`}>
+                    <PriceListItemsGrid
+                        priceListId={pl.id}
+                        valueType={pl.valueType}
+                        availableCurrencyCodes={pl.originChannel.availableCurrencyCodes}
+                        defaultCurrencyCode={pl.originChannel.defaultCurrencyCode}
+                        disabled={!isEditable}
+                    />
+                </PageBlock>
+
                 <PageBlock
                     column="main"
                     blockId="pricelist-access"
                     title={t`Customer access`}
                 >
-                    <PriceListAccessBlock
-                        priceListId={pl.id}
-                        assignedToEveryone={pl.assignedToEveryone}
-                        disabled={!isEditable}
-                    />
+                    {activeChannelId ? (
+                        <PriceListAccessBlock
+                            priceListId={pl.id}
+                            channelId={activeChannelId}
+                            assignedToEveryone={assignedToEveryone}
+                            // Channel-local: editable on any channel the list is
+                            // shared to (server gates with ManagePriceListAccess),
+                            // so NOT tied to origin. Only blocked while pending purge.
+                            disabled={isPendingDeletion}
+                        />
+                    ) : null}
                 </PageBlock>
             </PageLayout>
         </Page>
