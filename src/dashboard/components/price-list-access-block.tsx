@@ -38,6 +38,8 @@ import type {
 
 interface PriceListAccessBlockProps {
     priceListId: string;
+    /** The channel this access scope applies to (the active channel). */
+    channelId: string;
     assignedToEveryone: boolean;
     disabled: boolean;
 }
@@ -60,6 +62,7 @@ const SEARCH_DEBOUNCE_MS = 250;
  */
 export function PriceListAccessBlock({
     priceListId,
+    channelId,
     assignedToEveryone,
     disabled,
 }: Readonly<PriceListAccessBlockProps>) {
@@ -72,6 +75,9 @@ export function PriceListAccessBlock({
         // page re-counts.
         queryClient.invalidateQueries({ queryKey: ['pricelist', priceListId] });
         queryClient.invalidateQueries({
+            queryKey: ['pricelist-channel-access', priceListId],
+        });
+        queryClient.invalidateQueries({
             queryKey: ['pricelist-customers', priceListId],
         });
         queryClient.invalidateQueries({
@@ -83,6 +89,7 @@ export function PriceListAccessBlock({
         mutationFn: (assigned: boolean) =>
             api.mutate(setPriceListAssignedToEveryoneMutation, {
                 priceListId,
+                channelId,
                 assigned,
             } as any),
         onSuccess: () => {
@@ -99,6 +106,7 @@ export function PriceListAccessBlock({
         mutationFn: (customerId: string) =>
             api.mutate(addCustomersToPriceListMutation, {
                 priceListId,
+                channelId,
                 customerIds: [customerId],
             } as any),
         onSuccess: () => invalidate(),
@@ -112,6 +120,7 @@ export function PriceListAccessBlock({
         mutationFn: (customerId: string) =>
             api.mutate(removeCustomersFromPriceListMutation, {
                 priceListId,
+                channelId,
                 customerIds: [customerId],
             } as any),
         onSuccess: () => invalidate(),
@@ -125,6 +134,7 @@ export function PriceListAccessBlock({
         mutationFn: (customerGroupId: string) =>
             api.mutate(addCustomerGroupsToPriceListMutation, {
                 priceListId,
+                channelId,
                 customerGroupIds: [customerGroupId],
             } as any),
         onSuccess: () => invalidate(),
@@ -138,6 +148,7 @@ export function PriceListAccessBlock({
         mutationFn: (customerGroupId: string) =>
             api.mutate(removeCustomerGroupsFromPriceListMutation, {
                 priceListId,
+                channelId,
                 customerGroupIds: [customerGroupId],
             } as any),
         onSuccess: () => invalidate(),
@@ -176,6 +187,7 @@ export function PriceListAccessBlock({
                     <TabsContent value="customers" className="pt-3">
                         <CustomersPane
                             priceListId={priceListId}
+                            channelId={channelId}
                             disabled={disabled}
                             onAdd={id => addCustomerMutation.mutate(id)}
                             onRemove={id => removeCustomerMutation.mutate(id)}
@@ -186,6 +198,7 @@ export function PriceListAccessBlock({
                     <TabsContent value="groups" className="pt-3">
                         <CustomerGroupsPane
                             priceListId={priceListId}
+                            channelId={channelId}
                             disabled={disabled}
                             onAdd={id => addGroupMutation.mutate(id)}
                             onRemove={id => removeGroupMutation.mutate(id)}
@@ -208,6 +221,7 @@ function useDebouncedString(value: string, delayMs: number): string {
 
 interface CustomersPaneProps {
     priceListId: string;
+    channelId: string;
     disabled: boolean;
     onAdd: (id: string) => void;
     onRemove: (id: string) => void;
@@ -216,6 +230,7 @@ interface CustomersPaneProps {
 
 function CustomersPane({
     priceListId,
+    channelId,
     disabled,
     onAdd,
     onRemove,
@@ -233,10 +248,11 @@ function CustomersPane({
     }, [debouncedFilter]);
 
     const { data, isLoading } = useQuery({
-        queryKey: ['pricelist-customers', priceListId, page, debouncedFilter],
+        queryKey: ['pricelist-customers', priceListId, channelId, page, debouncedFilter],
         queryFn: () =>
             api.query(priceListAssignedCustomersQuery, {
                 priceListId,
+                channelId,
                 options: {
                     skip: page * PAGE_SIZE,
                     take: PAGE_SIZE,
@@ -333,6 +349,7 @@ function CustomersPane({
 
 interface CustomerGroupsPaneProps {
     priceListId: string;
+    channelId: string;
     disabled: boolean;
     onAdd: (id: string) => void;
     onRemove: (id: string) => void;
@@ -341,6 +358,7 @@ interface CustomerGroupsPaneProps {
 
 function CustomerGroupsPane({
     priceListId,
+    channelId,
     disabled,
     onAdd,
     onRemove,
@@ -356,10 +374,11 @@ function CustomerGroupsPane({
     }, [debouncedFilter]);
 
     const { data, isLoading } = useQuery({
-        queryKey: ['pricelist-customer-groups', priceListId, page, debouncedFilter],
+        queryKey: ['pricelist-customer-groups', priceListId, channelId, page, debouncedFilter],
         queryFn: () =>
             api.query(priceListAssignedCustomerGroupsQuery, {
                 priceListId,
+                channelId,
                 options: {
                     skip: page * PAGE_SIZE,
                     take: PAGE_SIZE,

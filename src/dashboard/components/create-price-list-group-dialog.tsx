@@ -12,16 +12,28 @@ import { Input } from '@/vdb/components/ui/input.js';
 import { Label } from '@/vdb/components/ui/label.js';
 import { api } from '@/vdb/graphql/api.js';
 import { useLingui } from '@lingui/react/macro';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
 import { createPriceListGroupMutation } from '../gql/mutations';
 
-export function CreatePriceListGroupDialog() {
+interface CreatePriceListGroupDialogProps {
+    /**
+     * Called after a successful create. The parent list page passes
+     * its `ListPage` refresh fn (captured via `registerRefresher`) so
+     * the new group appears without a manual page refresh — the
+     * manual `invalidateQueries` key never matched the data-table's
+     * internal cache key.
+     */
+    onCreated?: () => void;
+}
+
+export function CreatePriceListGroupDialog({
+    onCreated,
+}: Readonly<CreatePriceListGroupDialogProps>) {
     const { t } = useLingui();
-    const queryClient = useQueryClient();
     const [open, setOpen] = useState(false);
     const [code, setCode] = useState('');
     const [name, setName] = useState('');
@@ -38,7 +50,7 @@ export function CreatePriceListGroupDialog() {
             } as any),
         onSuccess: () => {
             toast.success(t`Group created`);
-            queryClient.invalidateQueries({ queryKey: ['pricelist-groups', 'list'] });
+            onCreated?.();
             setOpen(false);
             setCode('');
             setName('');

@@ -1,8 +1,7 @@
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
-// Card+CardHeader+CardContent dropped — `PageBlock` already renders
-// those, and double-wrapping produced a visible double border.
 import { Input } from '@/vdb/components/ui/input.js';
+import { Label } from '@/vdb/components/ui/label.js';
 import {
     Select,
     SelectContent,
@@ -10,15 +9,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/vdb/components/ui/select.js';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/vdb/components/ui/table.js';
-import { Money } from '@/vdb/components/data-display/money.js';
 import { MoneyInput } from '@/vdb/components/data-input/money-input.js';
 import { api } from '@/vdb/graphql/api.js';
 import {
@@ -32,7 +22,7 @@ import {
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { Plus, Save, Trash2, X } from 'lucide-react';
+import { Plus, Save, Trash, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -60,21 +50,30 @@ interface VariantItemsResult {
     priceListVariantItems: VariantItemRow[];
 }
 
+/** A single quantity-tier row inside a currency block. */
+interface TierRow {
+    stepQuantity: number;
+    value: number;
+}
+
+/** One currency's prices: an independent ladder of tiers. */
+interface CurrencyBlockData {
+    currencyCode: string;
+    tiers: TierRow[];
+}
+
 /**
- * Pivot editor for one (priceList, variant) pair.
+ * Per-variant price editor for one (priceList, variant) pair.
  *
- * Layout: rows = currencies (default first, then alphabetical),
- * columns = stepQuantity tiers (ascending). Cells are number inputs
- * (or PercentageInput for PERCENTAGE lists). Empty cells mean "no
- * price defined" — they save as DELETE in the diff if previously
- * present, NOOP otherwise.
+ * Layout: one bordered block per currency (à la Vendure collection
+ * editing), each listing its own quantity-tier ladder (Min qty →
+ * price). Tiers are independent per currency — EUR can have tiers
+ * 1/5/10 while USD has just 1.
  *
- * Save sends the full pivot state in one mutation
- * (`savePriceListVariantPivot`) which diffs insert/update/delete on
- * the server — see the matching service method.
- *
- * Composed from Vendure's existing UI primitives (Table, Card, Input,
- * Select, Button) so the page reads as native Vendure dashboard.
+ * Save flattens every block's tiers into the
+ * `savePriceListVariantPivot` payload, which diffs insert/update/
+ * delete server-side. Composed from Vendure UI primitives so the
+ * page reads as native dashboard.
  */
 export function PriceListItemDetailPage() {
     const { t } = useLingui();
@@ -87,11 +86,6 @@ export function PriceListItemDetailPage() {
     const priceListId = params.id;
     const variantId = params.variantId;
 
-    // Load the parent pricelist to get valueType and the channel's
-    // available currencies. Kept separate from the items query because
-    // (a) it's the same query the parent page uses (caches together),
-    // and (b) the items query already returns variant info; combining
-    // them yields no real saving.
     const { data: plData } = useQuery({
         queryKey: ['pricelist', priceListId],
         queryFn: () =>
@@ -115,32 +109,33 @@ export function PriceListItemDetailPage() {
     const items = itemsData?.priceListVariantItems ?? [];
     const isEditable = useIsEditable(pl?.originChannel.id);
 
-    // Pivot draft state. Sorted: currencies with default first then
-    // alphabetical, tiers ascending. Cells store value as integer
-    // (minor units for ABSOLUTE, basis points for PERCENTAGE).
-    const [currencies, setCurrencies] = useState<string[]>([]);
-    const [tiers, setTiers] = useState<number[]>([]);
-    const [cells, setCells] = useState<Map<string, number>>(new Map());
+    // Draft = ordered currency blocks. Default currency first, then
+    // alphabetical; tiers within a block ascending by stepQuantity.
+    const [blocks, setBlocks] = useState<CurrencyBlockData[]>([]);
 
-    const cellKey = (currency: string, step: number) => `${currency}::${step}`;
-
-    // Hydrate draft from server. Deliberately drops local edits when
-    // the query refetches — Save-then-invalidate is the canonical
-    // way to land changes; no auto-merge with stale draft.
+    // Hydrate from server. Drops local edits on refetch — Save then
+    // invalidate is the canonical landing path.
     useEffect(() => {
         if (!pl || !itemsData) return;
-        const cs = new Set<string>();
-        const ts = new Set<number>();
-        const c = new Map<string, number>();
+        const byCurrency = new Map<string, TierRow[]>();
         items.forEach(it => {
-            cs.add(it.currencyCode);
-            ts.add(it.stepQuantity);
-            c.set(cellKey(it.currencyCode, it.stepQuantity), it.value);
+            const tiers = byCurrency.get(it.currencyCode) ?? [];
+            tiers.push({ stepQuantity: it.stepQuantity, value: it.value });
+            byCurrency.set(it.currencyCode, tiers);
         });
-        setCurrencies(sortCurrencies(Array.from(cs), pl.originChannel.defaultCurrencyCode));
-        setTiers(Array.from(ts).sort((a, b) => a - b));
-        setCells(c);
+        const ordered = sortCurrencies(
+            Array.from(byCurrency.keys()),
+            pl.originChannel.defaultCurrencyCode,
+        ).map(currencyCode => ({
+            currencyCode,
+            tiers: (byCurrency.get(currencyCode) ?? []).sort(
+                (a, b) => a.stepQuantity - b.stepQuantity,
+            ),
+        }));
+        setBlocks(ordered);
     }, [pl?.id, itemsData]);
+
+    const valueType: PriceListValueType = pl?.valueType ?? 'ABSOLUTE';
 
     const saveMutation = useMutation({
         mutationFn: () => {
@@ -149,17 +144,15 @@ export function PriceListItemDetailPage() {
                 stepQuantity: number;
                 value: number;
             }> = [];
-            currencies.forEach(currency => {
-                tiers.forEach(step => {
-                    const v = cells.get(cellKey(currency, step));
-                    // Skip empty cells — a missing key means "no price
-                    // for this (currency, tier)" and we don't want to
-                    // send a default 0 that would clobber intent.
-                    if (typeof v === 'number') {
-                        rows.push({ currencyCode: currency, stepQuantity: step, value: v });
-                    }
-                });
-            });
+            for (const block of blocks) {
+                for (const tier of block.tiers) {
+                    rows.push({
+                        currencyCode: block.currencyCode,
+                        stepQuantity: tier.stepQuantity,
+                        value: tier.value,
+                    });
+                }
+            }
             return api.mutate(savePriceListVariantPivotMutation, {
                 input: { priceListId, productVariantId: variantId, rows },
             } as any);
@@ -179,8 +172,18 @@ export function PriceListItemDetailPage() {
         },
     });
 
+    // Client-side guard: a block can't have two tiers with the same
+    // stepQuantity (the server's UNIQUE constraint would reject it).
+    const duplicateTier = useMemo(
+        () =>
+            blocks.some(b => {
+                const steps = b.tiers.map(tr => tr.stepQuantity);
+                return new Set(steps).size !== steps.length;
+            }),
+        [blocks],
+    );
+
     const variant = items[0]?.productVariant;
-    const valueType: PriceListValueType = pl?.valueType ?? 'ABSOLUTE';
 
     if (isLoading || !pl) {
         return <div className="text-sm text-muted-foreground">{t`Loading…`}</div>;
@@ -189,6 +192,64 @@ export function PriceListItemDetailPage() {
     const headerTitle = variant
         ? `${variant.sku} — ${variant.name}`
         : t`Pricelist item`;
+
+    const usedCurrencies = blocks.map(b => b.currencyCode);
+
+    // === block-level state ops ===
+    const updateTier = (
+        currency: string,
+        index: number,
+        patch: Partial<TierRow>,
+    ) =>
+        setBlocks(prev =>
+            prev.map(b =>
+                b.currencyCode !== currency
+                    ? b
+                    : {
+                          ...b,
+                          tiers: b.tiers.map((tr, i) =>
+                              i === index ? { ...tr, ...patch } : tr,
+                          ),
+                      },
+            ),
+        );
+
+    const addTier = (currency: string) =>
+        setBlocks(prev =>
+            prev.map(b => {
+                if (b.currencyCode !== currency) return b;
+                const nextStep = b.tiers.length
+                    ? Math.max(...b.tiers.map(tr => tr.stepQuantity)) + 1
+                    : 1;
+                return { ...b, tiers: [...b.tiers, { stepQuantity: nextStep, value: 0 }] };
+            }),
+        );
+
+    const removeTier = (currency: string, index: number) =>
+        setBlocks(prev =>
+            prev.map(b =>
+                b.currencyCode !== currency
+                    ? b
+                    : { ...b, tiers: b.tiers.filter((_, i) => i !== index) },
+            ),
+        );
+
+    const removeCurrency = (currency: string) =>
+        setBlocks(prev => prev.filter(b => b.currencyCode !== currency));
+
+    const addCurrency = (currency: string) =>
+        setBlocks(prev =>
+            sortCurrencies(
+                [...prev.map(b => b.currencyCode), currency],
+                pl.originChannel.defaultCurrencyCode,
+            ).map(
+                code =>
+                    prev.find(b => b.currencyCode === code) ?? {
+                        currencyCode: code,
+                        tiers: [{ stepQuantity: 1, value: 0 }],
+                    },
+            ),
+        );
 
     return (
         <Page pageId="pricelist-item-detail">
@@ -209,7 +270,9 @@ export function PriceListItemDetailPage() {
                     </Button>
                     <Button
                         onClick={() => saveMutation.mutate()}
-                        disabled={!isEditable || saveMutation.isPending}
+                        disabled={
+                            !isEditable || duplicateTier || saveMutation.isPending
+                        }
                     >
                         <Save className="h-4 w-4 mr-1" />
                         {t`Save`}
@@ -220,10 +283,10 @@ export function PriceListItemDetailPage() {
             <PageLayout>
                 <PageBlock
                     column="main"
-                    blockId="pricelist-item-pivot"
+                    blockId="pricelist-item-prices"
                     title={
                         <span className="flex items-center gap-3">
-                            {t`Price pivot`}
+                            {t`Prices`}
                             <Badge
                                 variant={
                                     valueType === 'PERCENTAGE' ? 'secondary' : 'outline'
@@ -236,81 +299,53 @@ export function PriceListItemDetailPage() {
                         </span>
                     }
                 >
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                         <p className="text-xs text-muted-foreground">
-                            {t`Rows are currencies, columns are quantity tiers. Empty cells mean no price is defined for that combination.`}
+                            {t`One block per currency. Each tier applies from its "Min qty" upwards.`}
                         </p>
-                        <PivotTable
-                                currencies={currencies}
-                                tiers={tiers}
-                                cells={cells}
-                                valueType={valueType}
-                                defaultCurrencyCode={pl.originChannel.defaultCurrencyCode}
-                                disabled={!isEditable}
-                                onChangeCell={(currency, step, value) => {
-                                    setCells(prev => {
-                                        const next = new Map(prev);
-                                        if (value === null) {
-                                            next.delete(cellKey(currency, step));
-                                        } else {
-                                            next.set(cellKey(currency, step), value);
-                                        }
-                                        return next;
-                                    });
-                                }}
-                                onRemoveCurrency={currency => {
-                                    setCurrencies(prev => prev.filter(c => c !== currency));
-                                    setCells(prev => {
-                                        const next = new Map(prev);
-                                        tiers.forEach(step =>
-                                            next.delete(cellKey(currency, step)),
-                                        );
-                                        return next;
-                                    });
-                                }}
-                                onRemoveTier={step => {
-                                    setTiers(prev => prev.filter(s => s !== step));
-                                    setCells(prev => {
-                                        const next = new Map(prev);
-                                        currencies.forEach(currency =>
-                                            next.delete(cellKey(currency, step)),
-                                        );
-                                        return next;
-                                    });
-                                }}
-                            />
 
-                            <div className="flex flex-wrap items-center gap-3 pt-1">
-                                <AddTierControl
-                                    existingTiers={tiers}
-                                    disabled={!isEditable}
-                                    onAdd={step =>
-                                        setTiers(prev =>
-                                            Array.from(new Set([...prev, step])).sort(
-                                                (a, b) => a - b,
-                                            ),
-                                        )
-                                    }
-                                />
-                                <AddCurrencyControl
-                                    existingCurrencies={currencies}
-                                    availableCurrencies={
-                                        pl.originChannel.availableCurrencyCodes
-                                    }
-                                    defaultCurrencyCode={
-                                        pl.originChannel.defaultCurrencyCode
-                                    }
-                                    disabled={!isEditable}
-                                    onAdd={currency =>
-                                        setCurrencies(prev =>
-                                            sortCurrencies(
-                                                Array.from(new Set([...prev, currency])),
-                                                pl.originChannel.defaultCurrencyCode,
-                                            ),
-                                        )
-                                    }
-                                />
-                        </div>
+                        {blocks.length === 0 && (
+                            <p className="text-sm text-muted-foreground">
+                                {t`No prices yet. Add a currency to start.`}
+                            </p>
+                        )}
+
+                        {blocks.map(block => (
+                            <CurrencyBlock
+                                key={block.currencyCode}
+                                block={block}
+                                valueType={valueType}
+                                isDefault={
+                                    block.currencyCode ===
+                                    pl.originChannel.defaultCurrencyCode
+                                }
+                                disabled={!isEditable}
+                                onUpdateTier={(i, patch) =>
+                                    updateTier(block.currencyCode, i, patch)
+                                }
+                                onAddTier={() => addTier(block.currencyCode)}
+                                onRemoveTier={i => removeTier(block.currencyCode, i)}
+                                onRemoveCurrency={() =>
+                                    removeCurrency(block.currencyCode)
+                                }
+                            />
+                        ))}
+
+                        <AddCurrencyControl
+                            existingCurrencies={usedCurrencies}
+                            availableCurrencies={
+                                pl.originChannel.availableCurrencyCodes
+                            }
+                            defaultCurrencyCode={pl.originChannel.defaultCurrencyCode}
+                            disabled={!isEditable}
+                            onAdd={addCurrency}
+                        />
+
+                        {duplicateTier && (
+                            <p className="text-xs text-destructive">
+                                {t`A currency has two tiers with the same Min qty. Make them distinct before saving.`}
+                            </p>
+                        )}
                     </div>
                 </PageBlock>
             </PageLayout>
@@ -326,324 +361,129 @@ function sortCurrencies(list: string[], defaultCurrency: string): string[] {
     });
 }
 
-interface PivotTableProps {
-    currencies: string[];
-    tiers: number[];
-    cells: Map<string, number>;
+interface CurrencyBlockProps {
+    block: CurrencyBlockData;
     valueType: PriceListValueType;
-    defaultCurrencyCode: string;
+    isDefault: boolean;
     disabled: boolean;
-    onChangeCell: (currency: string, step: number, value: number | null) => void;
-    onRemoveCurrency: (currency: string) => void;
-    onRemoveTier: (step: number) => void;
+    onUpdateTier: (index: number, patch: Partial<TierRow>) => void;
+    onAddTier: () => void;
+    onRemoveTier: (index: number) => void;
+    onRemoveCurrency: () => void;
 }
 
-function PivotTable({
-    currencies,
-    tiers,
-    cells,
+/**
+ * A bordered section for one currency. Header carries the code + a
+ * default badge + the remove-currency action; the body is the tier
+ * ladder with always-editable Min-qty and price inputs.
+ *
+ * A plain bordered `<div>` (not a nested Card) — the parent
+ * `PageBlock` is already a Card, and nesting one would double the
+ * border.
+ */
+function CurrencyBlock({
+    block,
     valueType,
-    defaultCurrencyCode,
+    isDefault,
     disabled,
-    onChangeCell,
-    onRemoveCurrency,
+    onUpdateTier,
+    onAddTier,
     onRemoveTier,
-}: Readonly<PivotTableProps>) {
+    onRemoveCurrency,
+}: Readonly<CurrencyBlockProps>) {
     const { t } = useLingui();
-    const cellKey = (currency: string, step: number) => `${currency}::${step}`;
-
-    if (currencies.length === 0 || tiers.length === 0) {
-        return (
-            <p className="text-sm text-muted-foreground">
-                {t`Add at least one currency and one tier to start editing prices.`}
-            </p>
-        );
-    }
-
     return (
-        <Table>
-            <TableHeader>
-                {/*
-                  Two-row TableHead: a colspan top row labels the tier
-                  columns as quantity thresholds (single occurrence,
-                  not repeated on each tier). Bottom row carries the
-                  per-tier "≥ N" values and the remove-tier button.
-                */}
-                <TableRow>
-                    <TableHead className="w-[120px]" />
-                    <TableHead
-                        colSpan={tiers.length}
-                        className="text-center text-xs font-normal text-muted-foreground"
-                    >
-                        {t`Min qty`}
-                    </TableHead>
-                </TableRow>
-                <TableRow>
-                    <TableHead className="w-[120px]">{t`Currency`}</TableHead>
-                    {tiers.map(step => (
-                        <TableHead key={step}>
-                            <div className="flex items-center gap-1">
-                                <span>{t`≥ ${step}`}</span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    disabled={disabled}
-                                    onClick={() => onRemoveTier(step)}
-                                    aria-label={t`Remove tier`}
-                                >
-                                    <Trash2 className="h-3 w-3 text-destructive" />
-                                </Button>
-                            </div>
-                        </TableHead>
-                    ))}
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {currencies.map(currency => (
-                    <TableRow key={currency}>
-                        <TableCell className="font-medium">
-                            <div className="flex items-center gap-1">
-                                <span>{currency}</span>
-                                {currency === defaultCurrencyCode && (
-                                    <Badge variant="success" className="text-[10px]">
-                                        {t`default`}
-                                    </Badge>
-                                )}
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    disabled={disabled}
-                                    onClick={() => onRemoveCurrency(currency)}
-                                    aria-label={t`Remove currency`}
-                                >
-                                    <Trash2 className="h-3 w-3 text-destructive" />
-                                </Button>
-                            </div>
-                        </TableCell>
-                        {tiers.map(step => {
-                            const v = cells.get(cellKey(currency, step));
-                            return (
-                                <TableCell key={step}>
-                                    <PivotCell
-                                        value={v}
-                                        valueType={valueType}
-                                        currencyCode={currency}
-                                        disabled={disabled}
-                                        onChange={next => onChangeCell(currency, step, next)}
-                                    />
-                                </TableCell>
-                            );
-                        })}
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    );
-}
-
-interface PivotCellProps {
-    value: number | undefined;
-    valueType: PriceListValueType;
-    currencyCode: string;
-    disabled: boolean;
-    onChange: (value: number | null) => void;
-}
-
-function PivotCell({
-    value,
-    valueType,
-    currencyCode,
-    disabled,
-    onChange,
-}: Readonly<PivotCellProps>) {
-    const { t } = useLingui();
-    // Treat undefined as "empty" — the merchandiser hasn't defined a
-    // price here. A click on the cell turns it into the appropriate
-    // editor; X clears it back to empty (which the server will treat
-    // as DELETE if previously present).
-    const [editing, setEditing] = useState(false);
-
-    if (value === undefined) {
-        return editing ? (
-            <Editor
-                initial={0}
-                valueType={valueType}
-                currencyCode={currencyCode}
-                onCommit={v => {
-                    onChange(v);
-                    setEditing(false);
-                }}
-                onCancel={() => setEditing(false)}
-                disabled={disabled}
-            />
-        ) : (
-            <Button
-                variant="ghost"
-                size="sm"
-                disabled={disabled}
-                onClick={() => setEditing(true)}
-                className="text-muted-foreground"
-            >
-                {t`—`}
-            </Button>
-        );
-    }
-
-    return editing ? (
-        <Editor
-            initial={value}
-            valueType={valueType}
-            currencyCode={currencyCode}
-            onCommit={v => {
-                onChange(v);
-                setEditing(false);
-            }}
-            onCancel={() => setEditing(false)}
-            disabled={disabled}
-        />
-    ) : (
-        <div className="flex items-center gap-1">
-            <Button
-                variant="ghost"
-                size="sm"
-                disabled={disabled}
-                onClick={() => setEditing(true)}
-                className="flex-1 justify-start"
-            >
-                {valueType === 'PERCENTAGE' ? (
-                    <span>{(value / 100).toFixed(2)} %</span>
-                ) : (
-                    <Money value={value} currency={currencyCode} />
+        <div className="rounded-lg border bg-muted/50 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+                <span className="font-medium">{block.currencyCode}</span>
+                {isDefault && (
+                    <Badge variant="success" className="text-[10px]">
+                        {t`default`}
+                    </Badge>
                 )}
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={disabled}
-                onClick={() => onChange(null)}
-                aria-label={t`Clear cell`}
-            >
-                <Trash2 className="h-3 w-3 text-destructive" />
-            </Button>
-        </div>
-    );
-}
-
-interface EditorProps {
-    initial: number;
-    valueType: PriceListValueType;
-    currencyCode: string;
-    disabled: boolean;
-    onCommit: (value: number) => void;
-    onCancel: () => void;
-}
-
-function Editor({
-    initial,
-    valueType,
-    currencyCode,
-    disabled,
-    onCommit,
-    onCancel,
-}: Readonly<EditorProps>) {
-    const [draft, setDraft] = useState(initial);
-    if (valueType === 'PERCENTAGE') {
-        return (
-            <div className="flex items-center gap-1">
-                <PercentageInput value={draft} onChange={setDraft} />
-                <Button
-                    size="icon-sm"
-                    disabled={disabled}
-                    onClick={() => onCommit(draft)}
-                    aria-label="Save"
-                >
-                    <Save className="h-3 w-3" />
-                </Button>
                 <Button
                     variant="ghost"
                     size="icon-sm"
+                    className="ml-auto"
                     disabled={disabled}
-                    onClick={onCancel}
-                    aria-label="Cancel"
+                    onClick={onRemoveCurrency}
+                    aria-label={t`Remove currency`}
                 >
-                    <X className="h-3 w-3" />
+                    <X className="h-4 w-4" />
                 </Button>
             </div>
-        );
-    }
-    return (
-        <div className="flex items-center gap-1">
-            {/*
-              MoneyInput is the same component the catalog variant
-              edit page uses — currency affix, major-units display
-              (e.g. "19.99 $"), minor-units value handed back to us.
-              `name`/`onBlur`/`ref` are stubs since we're not inside
-              a react-hook-form Controller here.
-            */}
-            <MoneyInput
-                name="price"
-                value={draft}
-                onChange={setDraft}
-                onBlur={() => {}}
-                ref={() => {}}
-                disabled={disabled}
-                currency={currencyCode}
-            />
-            <Button
-                size="icon-sm"
-                disabled={disabled}
-                onClick={() => onCommit(draft)}
-                aria-label="Save"
-            >
-                <Save className="h-3 w-3" />
-            </Button>
-            <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={disabled}
-                onClick={onCancel}
-                aria-label="Cancel"
-            >
-                <X className="h-3 w-3" />
-            </Button>
-        </div>
-    );
-}
 
-interface AddTierControlProps {
-    existingTiers: number[];
-    disabled: boolean;
-    onAdd: (step: number) => void;
-}
+            {block.tiers.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                    {t`No tiers — add one below.`}
+                </p>
+            ) : (
+                <div className="space-y-2">
+                    {/* column labels (once) */}
+                    <div className="grid grid-cols-[120px_1fr_auto] items-center gap-3 text-xs text-muted-foreground">
+                        <span>{t`Min qty`}</span>
+                        <span>{t`Price`}</span>
+                        <span />
+                    </div>
+                    {block.tiers.map((tier, i) => (
+                        <div
+                            // index key is fine — rows are only reordered
+                            // by add/remove, and we re-hydrate from server
+                            // after save.
+                            key={i}
+                            className="grid grid-cols-[120px_1fr_auto] items-center gap-3"
+                        >
+                            <Input
+                                type="number"
+                                min={1}
+                                value={tier.stepQuantity}
+                                disabled={disabled}
+                                onChange={e =>
+                                    onUpdateTier(i, {
+                                        stepQuantity: Math.max(
+                                            1,
+                                            parseInt(e.target.value, 10) || 1,
+                                        ),
+                                    })
+                                }
+                            />
+                            {valueType === 'PERCENTAGE' ? (
+                                <PercentageInput
+                                    value={tier.value}
+                                    onChange={v => onUpdateTier(i, { value: v })}
+                                />
+                            ) : (
+                                <MoneyInput
+                                    name={`price-${block.currencyCode}-${i}`}
+                                    value={tier.value}
+                                    onChange={(v: number) =>
+                                        onUpdateTier(i, { value: v })
+                                    }
+                                    onBlur={() => {}}
+                                    ref={() => {}}
+                                    disabled={disabled}
+                                    currency={block.currencyCode}
+                                />
+                            )}
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                disabled={disabled}
+                                onClick={() => onRemoveTier(i)}
+                                aria-label={t`Remove tier`}
+                            >
+                                <Trash className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
 
-function AddTierControl({
-    existingTiers,
-    disabled,
-    onAdd,
-}: Readonly<AddTierControlProps>) {
-    const { t } = useLingui();
-    const [draft, setDraft] = useState<number>(() =>
-        existingTiers.length === 0 ? 1 : Math.max(...existingTiers) + 1,
-    );
-    const isDuplicate = existingTiers.includes(draft);
-    return (
-        <div className="flex items-center gap-1">
-            <Input
-                type="number"
-                min={1}
-                value={draft}
-                onChange={e =>
-                    setDraft(Math.max(1, parseInt(e.target.value, 10) || 1))
-                }
-                disabled={disabled}
-                className="w-24"
-                aria-label={t`Min qty`}
-            />
             <Button
                 variant="outline"
                 size="sm"
-                disabled={disabled || isDuplicate}
-                onClick={() => onAdd(draft)}
+                disabled={disabled}
+                onClick={onAddTier}
             >
                 <Plus className="h-3 w-3 mr-1" />
                 {t`Add tier`}
@@ -682,29 +522,37 @@ function AddCurrencyControl({
     if (choices.length === 0) {
         return (
             <p className="text-xs text-muted-foreground">
-                {t`All channel currencies already in pivot.`}
+                {t`All channel currencies already have a block.`}
             </p>
         );
     }
     return (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
+            <Label className="text-sm text-muted-foreground">
+                {t`Add currency`}
+            </Label>
             <Select
                 value={draft}
                 onValueChange={(v: string | null) => v && setDraft(v)}
                 disabled={disabled}
             >
-                <SelectTrigger>
-                    <SelectValue />
+                <SelectTrigger size="sm" className="w-[200px]">
+                    <SelectValue>
+                        {(value: unknown) =>
+                            typeof value === 'string' && value
+                                ? value === defaultCurrencyCode
+                                    ? `${value} (${t`default`})`
+                                    : value
+                                : null
+                        }
+                    </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                     {choices.map(c => (
                         <SelectItem key={c} value={c}>
-                            {c}
-                            {c === defaultCurrencyCode && (
-                                <span className="ml-1 text-muted-foreground">
-                                    ({t`default`})
-                                </span>
-                            )}
+                            {c === defaultCurrencyCode
+                                ? `${c} (${t`default`})`
+                                : c}
                         </SelectItem>
                     ))}
                 </SelectContent>
@@ -716,7 +564,7 @@ function AddCurrencyControl({
                 onClick={() => draft && onAdd(draft)}
             >
                 <Plus className="h-3 w-3 mr-1" />
-                {t`Add currency`}
+                {t`Add`}
             </Button>
         </div>
     );

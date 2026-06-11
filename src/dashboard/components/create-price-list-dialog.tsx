@@ -20,7 +20,7 @@ import {
 import { api } from '@/vdb/graphql/api.js';
 import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { useLingui } from '@lingui/react/macro';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -48,9 +48,10 @@ import type { PriceListValueType } from '../gql/types';
  * in *that* language — consistent with how every other Vendure entity
  * edit works.
  */
-export function CreatePriceListDialog() {
+export function CreatePriceListDialog({
+    onCreated,
+}: Readonly<{ onCreated?: () => void }>) {
     const { t } = useLingui();
-    const queryClient = useQueryClient();
     const navigate = useNavigate();
     const { settings } = useUserSettings();
     const contentLanguage = settings.contentLanguage;
@@ -72,7 +73,11 @@ export function CreatePriceListDialog() {
             } as any) as Promise<{ createPriceList: { id: string } }>,
         onSuccess: data => {
             toast.success(t`Pricelist created`);
-            queryClient.invalidateQueries({ queryKey: ['pricelists', 'list'] });
+            // Refresh the parent list (in case navigation below is a
+            // no-op, e.g. the detail route fails to resolve). The
+            // manual queryKey invalidation removed here never matched
+            // PaginatedListDataTable's internal cache key anyway.
+            onCreated?.();
             setOpen(false);
             setCode('');
             setName('');

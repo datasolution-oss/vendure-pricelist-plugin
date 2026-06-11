@@ -8,7 +8,6 @@ export const priceListsListQuery = graphql(/* GraphQL */ `
         code
         name
         valueType
-        timezone
         priority
         enabled
         startDate
@@ -50,6 +49,8 @@ export const priceListDetailQuery = graphql(/* GraphQL */ `
       enabled
       startDate
       endDate
+      deletedAt
+      purgeAt
       originChannel {
         id
         code
@@ -62,17 +63,16 @@ export const priceListDetailQuery = graphql(/* GraphQL */ `
       }
       groupMemberships {
         id
+        channel {
+          id
+          code
+        }
         group {
           id
           code
           name
-          channel {
-            id
-            code
-          }
         }
       }
-      assignedToEveryone
       translations {
         id
         languageCode
@@ -184,9 +184,14 @@ export const priceListVariantItemsQuery = graphql(/* GraphQL */ `
 export const priceListAssignedCustomersQuery = graphql(/* GraphQL */ `
   query GetPriceListAssignedCustomers(
     $priceListId: ID!
+    $channelId: ID!
     $options: PriceListCustomerListOptions
   ) {
-    priceListAssignedCustomers(priceListId: $priceListId, options: $options) {
+    priceListAssignedCustomers(
+      priceListId: $priceListId
+      channelId: $channelId
+      options: $options
+    ) {
       items {
         id
         emailAddress
@@ -201,10 +206,12 @@ export const priceListAssignedCustomersQuery = graphql(/* GraphQL */ `
 export const priceListAssignedCustomerGroupsQuery = graphql(/* GraphQL */ `
   query GetPriceListAssignedCustomerGroups(
     $priceListId: ID!
+    $channelId: ID!
     $options: PriceListCustomerGroupListOptions
   ) {
     priceListAssignedCustomerGroups(
       priceListId: $priceListId
+      channelId: $channelId
       options: $options
     ) {
       items {
@@ -212,6 +219,30 @@ export const priceListAssignedCustomerGroupsQuery = graphql(/* GraphQL */ `
         name
       }
       totalItems
+    }
+  }
+`);
+
+/**
+ * Per-channel access row (assignedToEveryone) for a (PriceList, Channel)
+ * pair. Null when no access has been set yet on that channel.
+ */
+export const priceListChannelAccessQuery = graphql(/* GraphQL */ `
+  query GetPriceListChannelAccess($priceListId: ID!, $channelId: ID!) {
+    priceListChannelAccess(priceListId: $priceListId, channelId: $channelId) {
+      id
+      assignedToEveryone
+    }
+  }
+`);
+
+/** The default group for a channel (channel-side mapping). */
+export const priceListDefaultGroupQuery = graphql(/* GraphQL */ `
+  query GetPriceListDefaultGroup($channelId: ID!) {
+    priceListDefaultGroup(channelId: $channelId) {
+      id
+      code
+      name
     }
   }
 `);
@@ -224,11 +255,6 @@ export const priceListGroupsListQuery = graphql(/* GraphQL */ `
         code
         name
         priority
-        isDefault
-        channel {
-          id
-          code
-        }
         createdAt
         updatedAt
       }
@@ -244,7 +270,29 @@ export const priceListGroupsByChannelQuery = graphql(/* GraphQL */ `
       code
       name
       priority
-      isDefault
+    }
+  }
+`);
+
+/**
+ * Pricelists bound to a group (via the membership pivot). Backs the
+ * "pricelists in this group" block on the group detail page.
+ */
+export const priceListsByGroupQuery = graphql(/* GraphQL */ `
+  query GetPriceListsByGroup($groupId: ID!, $options: PriceListListOptions) {
+    priceListsByGroup(groupId: $groupId, options: $options) {
+      items {
+        id
+        code
+        name
+        valueType
+        enabled
+        originChannel {
+          id
+          code
+        }
+      }
+      totalItems
     }
   }
 `);
@@ -256,11 +304,6 @@ export const priceListGroupDetailQuery = graphql(/* GraphQL */ `
       code
       name
       priority
-      isDefault
-      channel {
-        id
-        code
-      }
       translations {
         id
         languageCode

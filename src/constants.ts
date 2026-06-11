@@ -25,7 +25,14 @@ export const ERR_PRICELIST_GROUP_CHANNEL_MISMATCH =
 
 /**
  * Error code returned by PriceListGroupService.delete() when called on a
- * group with isDefault=true.
+ * group that is the default for one or more channels.
  */
 export const ERR_PRICELIST_GROUP_DEFAULT_NOT_DELETABLE =
     'PRICELIST_GROUP_DEFAULT_NOT_DELETABLE';
+
+/**
+ * Error code returned when a channel-local action (group binding, access
+ * management) targets a channel the pricelist is not shared to.
+ */
+export const ERR_PRICELIST_NOT_SHARED_TO_CHANNEL =
+    'PRICELIST_NOT_SHARED_TO_CHANNEL';

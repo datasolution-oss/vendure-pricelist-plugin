@@ -33,6 +33,10 @@ defineDashboardExtension({
                 id: 'pricelists',
                 title: /* i18n */ 'Pricelists',
                 sectionId: 'pricing',
+                // Hide the menu item from users without read access. The API
+                // is independently @Allow-guarded, so a direct URL hit still
+                // fails — this just keeps the nav clean per role.
+                requiresPermission: 'ReadPriceList',
             },
             component: route => <PriceListListPage route={route} />,
         },
@@ -57,6 +61,7 @@ defineDashboardExtension({
                 id: 'pricelist-groups',
                 title: /* i18n */ 'Groups',
                 sectionId: 'pricing',
+                requiresPermission: 'ReadPriceListGroup',
             },
             component: route => <PriceListGroupListPage route={route} />,
         },

@@ -118,54 +118,81 @@ export const removePriceListFromChannelMutation = graphql(/* GraphQL */ `
     }
 `);
 
+/**
+ * Reassign which group a pricelist belongs to on a channel. Returns
+ * refreshed groupMemberships so the Channel memberships table on the
+ * detail page updates in place.
+ */
+export const changePriceListGroupMutation = graphql(/* GraphQL */ `
+    mutation ChangePriceListGroup($priceListId: ID!, $channelId: ID!, $groupId: ID!) {
+        changePriceListGroup(priceListId: $priceListId, channelId: $channelId, groupId: $groupId) {
+            id
+            groupMemberships {
+                id
+                channel {
+                    id
+                    code
+                }
+                group {
+                    id
+                    code
+                    name
+                }
+            }
+        }
+    }
+`);
+
 // === Customer access ===
 
+/**
+ * Access is per (PriceList, Channel): every access mutation now takes a
+ * `channelId` (the active channel) and returns the affected
+ * `PriceListChannelAccess` row. The dashboard refetches the paginated
+ * `priceListAssignedCustomers` / `priceListAssignedCustomerGroups`
+ * queries (also channel-scoped) to pick up customer/group changes.
+ */
 export const setPriceListAssignedToEveryoneMutation = graphql(/* GraphQL */ `
-    mutation SetPriceListAssignedToEveryone($priceListId: ID!, $assigned: Boolean!) {
-        setPriceListAssignedToEveryone(priceListId: $priceListId, assigned: $assigned) {
+    mutation SetPriceListAssignedToEveryone($priceListId: ID!, $channelId: ID!, $assigned: Boolean!) {
+        setPriceListAssignedToEveryone(priceListId: $priceListId, channelId: $channelId, assigned: $assigned) {
             id
             assignedToEveryone
         }
     }
 `);
 
-/**
- * NOTE: the inline `assignedCustomers` / `assignedCustomerGroups`
- * selections were dropped in Stage 1C — those relations are no longer
- * exposed on `PriceList` (they're loaded via the paginated queries
- * `priceListAssignedCustomers` / `priceListAssignedCustomerGroups`).
- * The mutations still return the `PriceList` to confirm the change
- * applied; the dashboard refetches the relevant paginated query to
- * pick up the new state.
- */
 export const addCustomersToPriceListMutation = graphql(/* GraphQL */ `
-    mutation AddCustomersToPriceList($priceListId: ID!, $customerIds: [ID!]!) {
-        addCustomersToPriceList(priceListId: $priceListId, customerIds: $customerIds) {
+    mutation AddCustomersToPriceList($priceListId: ID!, $channelId: ID!, $customerIds: [ID!]!) {
+        addCustomersToPriceList(priceListId: $priceListId, channelId: $channelId, customerIds: $customerIds) {
             id
+            assignedToEveryone
         }
     }
 `);
 
 export const removeCustomersFromPriceListMutation = graphql(/* GraphQL */ `
-    mutation RemoveCustomersFromPriceList($priceListId: ID!, $customerIds: [ID!]!) {
-        removeCustomersFromPriceList(priceListId: $priceListId, customerIds: $customerIds) {
+    mutation RemoveCustomersFromPriceList($priceListId: ID!, $channelId: ID!, $customerIds: [ID!]!) {
+        removeCustomersFromPriceList(priceListId: $priceListId, channelId: $channelId, customerIds: $customerIds) {
             id
+            assignedToEveryone
         }
     }
 `);
 
 export const addCustomerGroupsToPriceListMutation = graphql(/* GraphQL */ `
-    mutation AddCustomerGroupsToPriceList($priceListId: ID!, $customerGroupIds: [ID!]!) {
-        addCustomerGroupsToPriceList(priceListId: $priceListId, customerGroupIds: $customerGroupIds) {
+    mutation AddCustomerGroupsToPriceList($priceListId: ID!, $channelId: ID!, $customerGroupIds: [ID!]!) {
+        addCustomerGroupsToPriceList(priceListId: $priceListId, channelId: $channelId, customerGroupIds: $customerGroupIds) {
             id
+            assignedToEveryone
         }
     }
 `);
 
 export const removeCustomerGroupsFromPriceListMutation = graphql(/* GraphQL */ `
-    mutation RemoveCustomerGroupsFromPriceList($priceListId: ID!, $customerGroupIds: [ID!]!) {
-        removeCustomerGroupsFromPriceList(priceListId: $priceListId, customerGroupIds: $customerGroupIds) {
+    mutation RemoveCustomerGroupsFromPriceList($priceListId: ID!, $channelId: ID!, $customerGroupIds: [ID!]!) {
+        removeCustomerGroupsFromPriceList(priceListId: $priceListId, channelId: $channelId, customerGroupIds: $customerGroupIds) {
             id
+            assignedToEveryone
         }
     }
 `);
@@ -206,7 +233,7 @@ export const setDefaultPriceListGroupMutation = graphql(/* GraphQL */ `
     mutation SetDefaultPriceListGroup($channelId: ID!, $groupId: ID!) {
         setDefaultPriceListGroup(channelId: $channelId, groupId: $groupId) {
             id
-            isDefault
+            code
         }
     }
 `);

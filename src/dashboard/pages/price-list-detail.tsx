@@ -1,19 +1,18 @@
+import { DateTime } from '@/vdb/components/data-display/date-time.js';
+import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Label } from '@/vdb/components/ui/label.js';
 import { Switch } from '@/vdb/components/ui/switch.js';
-import { Textarea } from '@/vdb/components/ui/textarea.js';
 import {
     Table,
     TableBody,
-    TableCell,
     TableHead,
     TableHeader,
     TableRow,
 } from '@/vdb/components/ui/table.js';
-import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
-import { api } from '@/vdb/graphql/api.js';
+import { Textarea } from '@/vdb/components/ui/textarea.js';
 import {
     Page,
     PageActionBar,
@@ -22,14 +21,18 @@ import {
     PageLayout,
     PageTitle,
 } from '@/vdb/framework/layout-engine/page-layout.js';
+import { api } from '@/vdb/graphql/api.js';
+import { useChannel } from '@/vdb/hooks/use-channel.js';
 import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { Save, Trash2 } from 'lucide-react';
+import { RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ChannelCodeLabel } from '@/vdb/index';
+import { GroupMembershipRow } from '../components/group-membership-row';
 import { PriceListAccessBlock } from '../components/price-list-access-block';
 import { PriceListItemsGrid } from '../components/price-list-items-grid';
 import { ReadOnlyBanner } from '../components/read-only-banner';
@@ -37,9 +40,10 @@ import { ShareToChannelDialog } from '../components/share-to-channel-dialog';
 import {
     deletePriceListMutation,
     removePriceListFromChannelMutation,
+    restorePriceListMutation,
     updatePriceListMutation,
 } from '../gql/mutations';
-import { priceListDetailQuery } from '../gql/queries';
+import { priceListChannelAccessQuery, priceListDetailQuery } from '../gql/queries';
 import type { PriceListDetailResult } from '../gql/types';
 import { useIsEditable } from '../hooks/use-is-editable';
 
@@ -65,6 +69,26 @@ export function PriceListDetailPage() {
 
     const pl = data?.priceList ?? null;
     const isEditable = useIsEditable(pl?.originChannel.id);
+
+    // Active channel: drives the per-channel access scope. Access is a
+    // channel-local action — editable on any channel the list is shared to
+    // (not just the origin), gated server-side by ManagePriceListAccess.
+    const { activeChannel } = useChannel();
+    const activeChannelId = activeChannel ? String(activeChannel.id) : undefined;
+
+    const { data: accessData } = useQuery({
+        queryKey: ['pricelist-channel-access', id, activeChannelId],
+        queryFn: () =>
+            api.query(priceListChannelAccessQuery, {
+                priceListId: id!,
+                channelId: activeChannelId!,
+            } as any) as Promise<{
+                priceListChannelAccess: { id: string; assignedToEveryone: boolean } | null;
+            }>,
+        enabled: !!id && !!activeChannelId,
+    });
+    const assignedToEveryone =
+        accessData?.priceListChannelAccess?.assignedToEveryone ?? false;
 
     // Editable form draft, hydrated from the loaded entity.
     const [code, setCode] = useState('');
@@ -148,6 +172,18 @@ export function PriceListDetailPage() {
         },
     });
 
+    const restoreMutation = useMutation({
+        mutationFn: () => api.mutate(restorePriceListMutation, { id: pl!.id } as any),
+        onSuccess: () => {
+            toast.success(t`Pricelist restored`);
+            queryClient.invalidateQueries({ queryKey: ['pricelist', id] });
+        },
+        onError: err => {
+            console.error('[pricelist] restorePriceList failed:', err);
+            toast.error(t`Failed to restore`);
+        },
+    });
+
     if (isLoading) {
         return <div className="text-sm text-muted-foreground">{t`Loading…`}</div>;
     }
@@ -162,6 +198,7 @@ export function PriceListDetailPage() {
     }
 
     const sharedChannels = pl.channels.filter(c => c.id !== pl.originChannel.id);
+    const isPendingDeletion = !!pl.deletedAt;
 
     return (
         <Page pageId="pricelist-detail">
@@ -169,31 +206,64 @@ export function PriceListDetailPage() {
 
             {!isEditable && <ReadOnlyBanner originChannelCode={pl.originChannel.code} />}
 
+            {isPendingDeletion && (
+                <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm">
+                    {pl.purgeAt ? (
+                        <span>
+                            {t`This pricelist is pending deletion. It will be permanently purged on`}{' '}
+                            <strong>
+                                <DateTime value={pl.purgeAt} />
+                            </strong>
+                            {t`. Restore it to cancel.`}
+                        </span>
+                    ) : (
+                        t`This pricelist is pending deletion. Restore it to cancel.`
+                    )}
+                </div>
+            )}
+
             <PageActionBar>
                 <PageActionBarRight>
-                    <ShareToChannelDialog
-                        priceListId={pl.id}
-                        excludeChannelIds={pl.channels.map(c => c.id)}
-                        disabled={!isEditable}
-                    />
-                    <ConfirmationDialog
-                        title={t`Delete this pricelist?`}
-                        description={t`The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable "Show pending deletion" on the list page during that window to restore.`}
-                        confirmText={t`Delete`}
-                        onConfirm={() => deleteMutation.mutate()}
-                    >
-                        <Button variant="destructive" disabled={!isEditable}>
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            {t`Delete`}
+                    {isPendingDeletion ? (
+                        // Pending-deletion list: the only meaningful action
+                        // is Restore. Hide Share/Delete/Save — editing a
+                        // list that's scheduled for purge is confusing, and
+                        // the server's edit guards would mostly reject it
+                        // anyway.
+                        <Button
+                            onClick={() => restoreMutation.mutate()}
+                            disabled={!isEditable || restoreMutation.isPending}
+                        >
+                            <RotateCcw className="h-4 w-4 mr-1" />
+                            {t`Restore`}
                         </Button>
-                    </ConfirmationDialog>
-                    <Button
-                        onClick={() => saveMutation.mutate()}
-                        disabled={!isEditable || saveMutation.isPending}
-                    >
-                        <Save className="h-4 w-4 mr-1" />
-                        {t`Save`}
-                    </Button>
+                    ) : (
+                        <>
+                            <ShareToChannelDialog
+                                priceListId={pl.id}
+                                excludeChannelIds={pl.channels.map(c => c.id)}
+                                disabled={!isEditable}
+                            />
+                            <ConfirmationDialog
+                                title={t`Delete this pricelist?`}
+                                description={t`The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable "Show pending deletion" on the list page during that window to restore.`}
+                                confirmText={t`Delete`}
+                                onConfirm={() => deleteMutation.mutate()}
+                            >
+                                <Button variant="destructive" disabled={!isEditable}>
+                                    <Trash2 className="h-4 w-4 mr-1" />
+                                    {t`Delete`}
+                                </Button>
+                            </ConfirmationDialog>
+                            <Button
+                                onClick={() => saveMutation.mutate()}
+                                disabled={!isEditable || saveMutation.isPending}
+                            >
+                                <Save className="h-4 w-4 mr-1" />
+                                {t`Save`}
+                            </Button>
+                        </>
+                    )}
                 </PageActionBarRight>
             </PageActionBar>
 
@@ -257,10 +327,6 @@ export function PriceListDetailPage() {
                                 </span>
                             </div>
                         </FormRow>
-                        {/* Timezone field intentionally hidden — see plan
-                            Stage 1D §"timezone on hold". The DB column still
-                            exists (defaults to UTC); re-enable by mounting
-                            TimezoneSelect when Stage-2 lookup consumes it. */}
                         <FormRow label={t`Priority`}>
                             <Input
                                 type="number"
@@ -295,19 +361,9 @@ export function PriceListDetailPage() {
                             />
                         </FormRow>
                         <FormRow label={t`Origin channel`}>
-                            <code className="text-sm">{pl.originChannel.code}</code>
+                            <code className="text-sm"><ChannelCodeLabel code={pl.originChannel.code} /></code>
                         </FormRow>
                     </div>
-                </PageBlock>
-
-                <PageBlock column="main" blockId="pricelist-items" title={t`Items`}>
-                    <PriceListItemsGrid
-                        priceListId={pl.id}
-                        valueType={pl.valueType}
-                        availableCurrencyCodes={pl.originChannel.availableCurrencyCodes}
-                        defaultCurrencyCode={pl.originChannel.defaultCurrencyCode}
-                        disabled={!isEditable}
-                    />
                 </PageBlock>
 
                 <PageBlock
@@ -330,49 +386,35 @@ export function PriceListDetailPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {pl.groupMemberships.map(m => {
-                                    const isOriginRow =
-                                        m.group.channel.id === pl.originChannel.id;
-                                    return (
-                                        <TableRow key={m.id}>
-                                            <TableCell className="font-mono">
-                                                {m.group.channel.code}
-                                            </TableCell>
-                                            <TableCell className="font-mono">
-                                                {m.group.code}
-                                            </TableCell>
-                                            <TableCell>
-                                                {isOriginRow && (
-                                                    <Badge variant="success">
-                                                        {t`origin`}
-                                                    </Badge>
-                                                )}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                {!isOriginRow && (
-                                                    <ConfirmationDialog
-                                                        title={t`Stop sharing on this channel?`}
-                                                        description={t`The pricelist will no longer be visible on the target channel. Items remain intact.`}
-                                                        confirmText={t`Stop sharing`}
-                                                        onConfirm={() =>
-                                                            unshareMutation.mutate(
-                                                                m.group.channel.id,
-                                                            )
-                                                        }
-                                                    >
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            disabled={!isEditable}
-                                                        >
-                                                            {t`Stop sharing`}
-                                                        </Button>
-                                                    </ConfirmationDialog>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
+                                {pl.groupMemberships.map(m => (
+                                    <GroupMembershipRow
+                                        key={m.id}
+                                        priceListId={pl.id}
+                                        membershipId={m.id}
+                                        channelId={m.channel.id}
+                                        channelCode={m.channel.code}
+                                        currentGroupId={m.group.id}
+                                        currentGroupCode={m.group.code}
+                                        isOrigin={
+                                            m.channel.id === pl.originChannel.id
+                                        }
+                                        // Group binding is channel-local: only the
+                                        // active channel's row is changeable from here
+                                        // (the server requires ctx.channel === channel).
+                                        disabled={
+                                            isPendingDeletion ||
+                                            m.channel.id !== activeChannelId
+                                        }
+                                        onChanged={() =>
+                                            queryClient.invalidateQueries({
+                                                queryKey: ['pricelist', id],
+                                            })
+                                        }
+                                        onUnshare={() =>
+                                            unshareMutation.mutate(m.channel.id)
+                                        }
+                                    />
+                                ))}
                             </TableBody>
                         </Table>
                     )}
@@ -383,16 +425,32 @@ export function PriceListDetailPage() {
                     )}
                 </PageBlock>
 
+                <PageBlock column="main" blockId="pricelist-items" title={t`Items`}>
+                    <PriceListItemsGrid
+                        priceListId={pl.id}
+                        valueType={pl.valueType}
+                        availableCurrencyCodes={pl.originChannel.availableCurrencyCodes}
+                        defaultCurrencyCode={pl.originChannel.defaultCurrencyCode}
+                        disabled={!isEditable}
+                    />
+                </PageBlock>
+
                 <PageBlock
                     column="main"
                     blockId="pricelist-access"
                     title={t`Customer access`}
                 >
-                    <PriceListAccessBlock
-                        priceListId={pl.id}
-                        assignedToEveryone={pl.assignedToEveryone}
-                        disabled={!isEditable}
-                    />
+                    {activeChannelId ? (
+                        <PriceListAccessBlock
+                            priceListId={pl.id}
+                            channelId={activeChannelId}
+                            assignedToEveryone={assignedToEveryone}
+                            // Channel-local: editable on any channel the list is
+                            // shared to (server gates with ManagePriceListAccess),
+                            // so NOT tied to origin. Only blocked while pending purge.
+                            disabled={isPendingDeletion}
+                        />
+                    ) : null}
                 </PageBlock>
             </PageLayout>
         </Page>

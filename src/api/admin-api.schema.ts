@@ -27,25 +27,46 @@ export const adminApiExtensions = gql`
         channels: [Channel!]!
         groupMemberships: [PriceListGroupMembership!]!
         items(options: PriceListItemListOptions): PriceListItemList!
-        assignedToEveryone: Boolean!
         """
-        NOTE: \`assignedCustomers\` and \`assignedCustomerGroups\` are intentionally
-        NOT exposed inline. Use the paginated \`priceListAssignedCustomers\`
-        and \`priceListAssignedCustomerGroups\` queries — direct customer
-        assignments on a single list can run into the thousands and inlining
-        them broke the detail page.
+        Customer access is decided per-channel — see \`PriceListChannelAccess\`
+        and the \`priceListChannelAccess\` / paginated
+        \`priceListAssignedCustomers\` / \`priceListAssignedCustomerGroups\`
+        queries (all take a \`channelId\`). Not exposed inline here: a list
+        can carry thousands of assignments per channel.
         """
         translations: [PriceListTranslation!]!
         customFields: JSON
         createdAt: DateTime!
         updatedAt: DateTime!
         deletedAt: DateTime
+        """
+        When a pending-deletion list will be hard-deleted by the purge
+        cron (= deletedAt + grace period). Null when the list is active
+        or when the purge task is disabled. Computed, not stored.
+        """
+        purgeAt: DateTime
     }
 
     type PriceListGroupMembership implements Node {
         id: ID!
         priceList: PriceList!
+        """The channel this binding applies to (explicit — groups are now shareable)."""
+        channel: Channel!
         group: PriceListGroup!
+        createdAt: DateTime!
+        updatedAt: DateTime!
+    }
+
+    """
+    Per-channel customer-access scope for a PriceList. Access (everyone /
+    direct customers / customer groups) is decided per (PriceList, Channel),
+    not globally on the list.
+    """
+    type PriceListChannelAccess implements Node {
+        id: ID!
+        priceList: PriceList!
+        channel: Channel!
+        assignedToEveryone: Boolean!
         createdAt: DateTime!
         updatedAt: DateTime!
     }
@@ -86,7 +107,13 @@ export const adminApiExtensions = gql`
         code: String!
         name: String!
         priority: Int!
-        isDefault: Boolean!
+        """
+        The channel this group belongs to. Backed by the entity's
+        ChannelAware ManyToMany relation (a group is assigned to exactly one
+        channel); exposed as a single value to match that invariant. The
+        "default group per channel" is queried via
+        \`priceListDefaultGroup(channelId)\`.
+        """
         channel: Channel!
         translations: [PriceListGroupTranslation!]!
         customFields: JSON
@@ -224,6 +251,16 @@ export const adminApiExtensions = gql`
         to populate the destination-group dropdown for a target channel.
         """
         priceListGroupsByChannel(channelId: ID!): [PriceListGroup!]!
+        """The default PriceListGroup for a channel (channel-side mapping)."""
+        priceListDefaultGroup(channelId: ID!): PriceListGroup!
+        """Per-channel access row for a (PriceList, Channel) pair, if any."""
+        priceListChannelAccess(priceListId: ID!, channelId: ID!): PriceListChannelAccess
+        """
+        Paginated list of pricelists bound to a group (via the
+        membership pivot). Backs the "pricelists in this group" block
+        on the group detail page.
+        """
+        priceListsByGroup(groupId: ID!, options: PriceListListOptions): PriceListList!
         """
         Per-variant aggregate listing for a pricelist. Each row is one
         ProductVariant present in the list with summary counts. Use
@@ -250,6 +287,7 @@ export const adminApiExtensions = gql`
         """
         priceListAssignedCustomers(
             priceListId: ID!
+            channelId: ID!
             options: PriceListCustomerListOptions
         ): PriceListCustomerList!
         """
@@ -257,6 +295,7 @@ export const adminApiExtensions = gql`
         """
         priceListAssignedCustomerGroups(
             priceListId: ID!
+            channelId: ID!
             options: PriceListCustomerGroupListOptions
         ): PriceListCustomerGroupList!
     }
@@ -300,6 +339,14 @@ export const adminApiExtensions = gql`
         # Channel sharing
         assignPriceListToChannel(input: AssignPriceListToChannelInput!): PriceList!
         removePriceListFromChannel(priceListId: ID!, channelId: ID!): PriceList!
+        """
+        Reassign the group a pricelist belongs to on a given channel.
+        The membership for that channel is repointed at \`groupId\`,
+        which must itself belong to \`channelId\`. Errors if no binding
+        exists for the channel yet (use assignPriceListToChannel to
+        create one).
+        """
+        changePriceListGroup(priceListId: ID!, channelId: ID!, groupId: ID!): PriceList!
 
         # PriceListGroup CRUD
         createPriceListGroup(input: CreatePriceListGroupInput!): PriceListGroup!
@@ -307,12 +354,13 @@ export const adminApiExtensions = gql`
         deletePriceListGroup(id: ID!): DeletionResponse!
         setDefaultPriceListGroup(channelId: ID!, groupId: ID!): PriceListGroup!
 
-        # PriceList assignment management
-        setPriceListAssignedToEveryone(priceListId: ID!, assigned: Boolean!): PriceList!
-        addCustomersToPriceList(priceListId: ID!, customerIds: [ID!]!): PriceList!
-        removeCustomersFromPriceList(priceListId: ID!, customerIds: [ID!]!): PriceList!
-        addCustomerGroupsToPriceList(priceListId: ID!, customerGroupIds: [ID!]!): PriceList!
-        removeCustomerGroupsFromPriceList(priceListId: ID!, customerGroupIds: [ID!]!): PriceList!
+        # PriceList per-channel access management — channelId required, returns
+        # the affected (PriceList, Channel) access row.
+        setPriceListAssignedToEveryone(priceListId: ID!, channelId: ID!, assigned: Boolean!): PriceListChannelAccess!
+        addCustomersToPriceList(priceListId: ID!, channelId: ID!, customerIds: [ID!]!): PriceListChannelAccess!
+        removeCustomersFromPriceList(priceListId: ID!, channelId: ID!, customerIds: [ID!]!): PriceListChannelAccess!
+        addCustomerGroupsToPriceList(priceListId: ID!, channelId: ID!, customerGroupIds: [ID!]!): PriceListChannelAccess!
+        removeCustomerGroupsFromPriceList(priceListId: ID!, channelId: ID!, customerGroupIds: [ID!]!): PriceListChannelAccess!
 
     }
 
@@ -392,7 +440,8 @@ export const adminApiExtensions = gql`
     input AssignPriceListToChannelInput {
         priceListId: ID!
         channelId: ID!
-        groupId: ID!
+        """Optional — falls back to the target channel's default group."""
+        groupId: ID
     }
 
     input PriceListGroupTranslationInput {
