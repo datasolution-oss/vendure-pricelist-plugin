@@ -3,6 +3,7 @@ import { DeepPartial, ID } from '@vendure/common/lib/shared-types';
 import { HasCustomFields, ProductVariant, VendureEntity } from '@vendure/core';
 import { Column, Entity, Index, ManyToOne, Unique } from 'typeorm';
 
+import { CustomPriceListItemFields } from '../custom-entity-fields';
 import { PriceList } from './price-list.entity';
 
 export type PriceListValueType = 'ABSOLUTE' | 'PERCENTAGE';
@@ -74,7 +75,7 @@ export class PriceListItem extends VendureEntity implements HasCustomFields {
     @Column({ type: 'int', default: 1 })
     stepQuantity: number;
 
-    /** See `PriceList.customFields` for rationale. */
-    @Column({ type: 'simple-json', default: '{}' })
-    customFields: { [key: string]: any } = {};
+    /** Standard Vendure custom-fields slot — see `PriceList.customFields`. */
+    @Column(() => CustomPriceListItemFields)
+    customFields: CustomPriceListItemFields;
 }

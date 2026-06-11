@@ -1,8 +1,9 @@
 import { LanguageCode } from '@vendure/common/lib/generated-types';
-import { CustomFieldsObject, DeepPartial } from '@vendure/common/lib/shared-types';
+import { DeepPartial } from '@vendure/common/lib/shared-types';
 import { Translation, VendureEntity } from '@vendure/core';
 import { Column, Entity, Index, ManyToOne } from 'typeorm';
 
+import { CustomPriceListFieldsTranslation } from '../custom-entity-fields';
 import { PriceList } from './price-list.entity';
 
 @Entity()
@@ -33,9 +34,9 @@ export class PriceListTranslation
     base: PriceList;
 
     /**
-     * Required by `Translation<T>` when the parent has `customFields`. Same
-     * "free-form JSON bag" pattern as the entity itself.
+     * Standard Vendure custom-fields slot for the translation — carries the
+     * `localeString`/`localeText` custom fields configured on `PriceList`.
      */
-    @Column({ type: 'simple-json', default: '{}' })
-    customFields: CustomFieldsObject = {};
+    @Column(() => CustomPriceListFieldsTranslation)
+    customFields: CustomPriceListFieldsTranslation;
 }

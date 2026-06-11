@@ -1,8 +1,10 @@
-import { PluginCommonModule, Type, VendurePlugin } from '@vendure/core';
+import { LanguageCode, PluginCommonModule, Type, VendurePlugin } from '@vendure/core';
 
 import { adminApiExtensions, ALL_RESOLVERS } from './api';
 import { PRICELIST_PLUGIN_OPTIONS } from './constants';
+import { DEFAULT_PRICE_LIST_GROUP_FIELD } from './custom-fields';
 import { ALL_ENTITIES } from './entities';
+import { PriceListGroup } from './entities/price-list-group.entity';
 import {
     assignPriceListGroupPermission,
     managePriceListAccessPermission,
@@ -36,6 +38,35 @@ const DEFAULT_PURGE_BATCH_SIZE = 100;
             assignPriceListGroupPermission,
             managePriceListAccessPermission,
         );
+
+        // Channel-side default PriceListGroup (replaces the former
+        // `PriceListChannelDefaultGroup` entity). A relation custom field on
+        // `Channel` — mirrors `Channel.defaultTaxZone` — so "one default per
+        // channel" is structural (the FK lives on the channel row) and the
+        // value is exposed for free as `Channel.customFields.defaultPriceListGroup`.
+        // `eager: false`: callers load it explicitly via
+        // `relations: ['customFields.defaultPriceListGroup']`.
+        config.customFields.Channel.push({
+            name: DEFAULT_PRICE_LIST_GROUP_FIELD,
+            type: 'relation',
+            entity: PriceListGroup,
+            graphQLType: 'PriceListGroup',
+            list: false,
+            nullable: true,
+            eager: false,
+            public: false,
+            label: [
+                { languageCode: LanguageCode.en, value: 'Default price list group' },
+            ],
+            description: [
+                {
+                    languageCode: LanguageCode.en,
+                    value:
+                        "The channel's default price list group. A new price list " +
+                        'created on this channel with no explicit group lands here.',
+                },
+            ],
+        });
 
         // Stage 1E: register the purge-pending-deletion cron task.
         //

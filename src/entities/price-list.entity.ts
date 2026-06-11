@@ -20,6 +20,7 @@ import {
     OneToMany,
 } from 'typeorm';
 
+import { CustomPriceListFields } from '../custom-entity-fields';
 import { PriceListChannelAccess } from './price-list-channel-access.entity';
 import { PriceListGroupMembership } from './price-list-group-membership.entity';
 import { PriceListItem, PriceListValueType } from './price-list-item.entity';
@@ -27,6 +28,14 @@ import { PriceListTranslation } from './price-list-translation.entity';
 
 @Entity()
 @Index(['startDate', 'endDate'])
+// Partial index serving the purge cron's `deletedAt IS NOT NULL AND
+// deletedAt < cutoff ORDER BY deletedAt` scan. Partial (Postgres) keeps it
+// tiny — it indexes only soft-deleted rows, not the live majority that
+// every listing filters out with `deletedAt IS NULL`.
+@Index(['deletedAt'], { where: '"deletedAt" IS NOT NULL' })
+// Backs `findByCode` (where { code, originChannelId, deletedAt }) and the
+// `originChannel` FK (RESTRICT) integrity check on channel deletion.
+@Index(['originChannelId', 'code'])
 export class PriceList
     extends VendureEntity
     implements ChannelAware, SoftDeletable, Translatable, HasCustomFields
@@ -133,10 +142,11 @@ export class PriceList
     deletedAt: Date | null;
 
     /**
-     * Free-form metadata bag. Plugin-defined entities cannot participate in
-     * Vendure's auto-generated `Custom<Entity>Fields` typing (that machinery
-     * targets core entities only), so we expose a `simple-json` column.
+     * Standard Vendure custom-fields slot — an embedded carrier populated at
+     * bootstrap from `config.customFields.PriceList`. Empty by default; a
+     * merchant extends it like any core entity. `localeString`/`localeText`
+     * fields land on `PriceListTranslation.customFields`.
      */
-    @Column({ type: 'simple-json', default: '{}' })
-    customFields: { [key: string]: any } = {};
+    @Column(() => CustomPriceListFields)
+    customFields: CustomPriceListFields;
 }

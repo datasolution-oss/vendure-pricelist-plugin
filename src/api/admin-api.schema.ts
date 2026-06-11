@@ -108,12 +108,13 @@ export const adminApiExtensions = gql`
         name: String!
         priority: Int!
         """
-        Channels this group is assigned to (ChannelAware). A group is
-        normally in exactly one channel; the relation leaves room for
-        sharing later. The "default group per channel" is no longer a flag
-        here — query \`priceListDefaultGroup(channelId)\`.
+        The channel this group belongs to. Backed by the entity's
+        ChannelAware ManyToMany relation (a group is assigned to exactly one
+        channel); exposed as a single value to match that invariant. The
+        "default group per channel" is queried via
+        \`priceListDefaultGroup(channelId)\`.
         """
-        channels: [Channel!]!
+        channel: Channel!
         translations: [PriceListGroupTranslation!]!
         customFields: JSON
         createdAt: DateTime!

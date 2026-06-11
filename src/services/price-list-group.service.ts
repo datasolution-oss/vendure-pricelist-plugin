@@ -6,6 +6,7 @@ import {
 } from '@vendure/common/lib/generated-types';
 import { ID } from '@vendure/common/lib/shared-types';
 import {
+    Channel,
     ChannelEvent,
     ChannelService,
     EventBus,
@@ -29,7 +30,7 @@ import {
     ERR_PRICELIST_GROUP_DEFAULT_NOT_DELETABLE,
     loggerCtx,
 } from '../constants';
-import { PriceListChannelDefaultGroup } from '../entities/price-list-channel-default-group.entity';
+import { DEFAULT_PRICE_LIST_GROUP_FIELD } from '../custom-fields';
 import { PriceListGroupTranslation } from '../entities/price-list-group-translation.entity';
 import { PriceListGroup } from '../entities/price-list-group.entity';
 
@@ -110,24 +111,26 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
 
     /**
      * Idempotent helper: ensures `channelId` has a default group. Creates
-     * the group (assigned to the channel) AND the channel-side default
-     * mapping row if absent. Shared between the channel-creation event
-     * handler and the bootstrap backfill.
+     * the group (assigned to the channel) AND records it as the channel's
+     * default (the `Channel.defaultPriceListGroup` relation custom field) if
+     * absent. Shared between the channel-creation event handler and the
+     * bootstrap backfill.
      */
     private async ensureDefaultGroup(
         ctx: RequestContext,
         channelId: ID,
     ): Promise<void> {
-        const existingDefault = await this.connection
-            .getRepository(ctx, PriceListChannelDefaultGroup)
-            .findOne({ where: { channelId } });
-        if (existingDefault) {
+        const channel = await this.connection.getRepository(ctx, Channel).findOne({
+            where: { id: channelId },
+            relations: [`customFields.${DEFAULT_PRICE_LIST_GROUP_FIELD}`],
+        });
+        if (channel?.customFields.defaultPriceListGroup) {
             return;
         }
         // Atomic: create the group, assign it to the channel (ChannelAware),
         // and record it as the channel's default in one transaction. Without
-        // this, a failure between steps could leave a created-but-unmapped
-        // group, and the next run (which only checks the mapping) would
+        // this, a failure between steps could leave a created-but-unreferenced
+        // group, and the next run (which only checks the custom field) would
         // create a second orphan group.
         await this.connection.withTransaction(ctx, async txCtx => {
             const created = await this.translatableSaver.create({
@@ -150,14 +153,12 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
                 created.id,
                 [channelId],
             );
-            await this.connection
-                .getRepository(txCtx, PriceListChannelDefaultGroup)
-                .save(
-                    new PriceListChannelDefaultGroup({
-                        channelId,
-                        groupId: created.id,
-                    }),
-                );
+            const channelRepo = this.connection.getRepository(txCtx, Channel);
+            const txChannel = await channelRepo.findOneOrFail({
+                where: { id: channelId },
+            });
+            txChannel.customFields.defaultPriceListGroup = created;
+            await channelRepo.save(txChannel);
         });
         Logger.info(
             `Created default PriceListGroup for channel ${channelId}.`,
@@ -183,6 +184,23 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
                 items: items.map(g => this.translator.translate(g, ctx)),
                 totalItems,
             }));
+    }
+
+    /**
+     * The single channel a group belongs to. A group is assigned to exactly
+     * one channel (its creating channel), so we return the first of the
+     * ChannelAware `channels` relation. Used by the `PriceListGroup.channel`
+     * field resolver for the paths where the relation wasn't eagerly loaded.
+     */
+    async findChannelForGroup(
+        ctx: RequestContext,
+        groupId: ID,
+    ): Promise<Channel | undefined> {
+        const group = await this.connection.getRepository(ctx, PriceListGroup).findOne({
+            where: { id: groupId },
+            relations: ['channels'],
+        });
+        return group?.channels?.[0];
     }
 
     async findOne(ctx: RequestContext, id: ID): Promise<PriceListGroup | undefined> {
@@ -214,34 +232,58 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
 
     /**
      * The default group for a channel, resolved via the channel-side
-     * `PriceListChannelDefaultGroup` mapping (no `isDefault` flag on the
-     * group itself).
+     * `Channel.defaultPriceListGroup` relation custom field (no `isDefault`
+     * flag on the group itself). The group is re-fetched by id (not scoped to
+     * the active channel) because the default may be queried for a channel
+     * other than `ctx.channelId`.
      */
     async findDefaultForChannel(
         ctx: RequestContext,
         channelId: ID,
     ): Promise<PriceListGroup> {
-        const mapping = await this.connection
-            .getRepository(ctx, PriceListChannelDefaultGroup)
-            .findOne({
-                where: { channelId },
-                relations: ['group', 'group.translations'],
-            });
-        if (!mapping?.group) {
+        const channel = await this.connection.getRepository(ctx, Channel).findOne({
+            where: { id: channelId },
+            relations: [`customFields.${DEFAULT_PRICE_LIST_GROUP_FIELD}`],
+        });
+        const groupId = channel?.customFields.defaultPriceListGroup?.id;
+        if (!groupId) {
             throw new UserInputError(
                 `No default PriceListGroup found for channel ${channelId}. ` +
                     `Channel-creation hook may not have fired.`,
             );
         }
-        return this.translator.translate(mapping.group, ctx);
+        const group = await this.connection.getRepository(ctx, PriceListGroup).findOne({
+            where: { id: groupId },
+            relations: ['translations', 'channels'],
+        });
+        if (!group) {
+            throw new UserInputError(
+                `Default PriceListGroup ${groupId} for channel ${channelId} no longer exists.`,
+            );
+        }
+        return this.translator.translate(group, ctx);
     }
 
-    /** True if the group is the default for one or more channels. */
-    async isDefaultForAnyChannel(ctx: RequestContext, groupId: ID): Promise<boolean> {
-        const count = await this.connection
-            .getRepository(ctx, PriceListChannelDefaultGroup)
-            .count({ where: { groupId } });
-        return count > 0;
+    /**
+     * True if `groupId` is the default group of `channelId`.
+     *
+     * Single check on the channel's `defaultPriceListGroup` custom field — no
+     * need to scan every channel: a group is assigned to a single channel and
+     * `setDefault` only allows a channel to default to a group it owns, so the
+     * sole channel that could reference this group as default is the one it
+     * belongs to (the active channel at deletion time).
+     */
+    async isDefaultForChannel(
+        ctx: RequestContext,
+        channelId: ID,
+        groupId: ID,
+    ): Promise<boolean> {
+        const channel = await this.connection.getRepository(ctx, Channel).findOne({
+            where: { id: channelId },
+            relations: [`customFields.${DEFAULT_PRICE_LIST_GROUP_FIELD}`],
+        });
+        const defaultId = channel?.customFields.defaultPriceListGroup?.id;
+        return defaultId != null && idsAreEqual(defaultId, groupId);
     }
 
     async create(
@@ -306,7 +348,7 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
                 message: `PriceListGroup ${id} not found`,
             };
         }
-        if (await this.isDefaultForAnyChannel(ctx, id)) {
+        if (await this.isDefaultForChannel(ctx, ctx.channelId, id)) {
             throw new IllegalOperationError(ERR_PRICELIST_GROUP_DEFAULT_NOT_DELETABLE);
         }
         await this.connection.getRepository(ctx, PriceListGroup).remove(group);
@@ -314,10 +356,10 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
     }
 
     /**
-     * Set the default group for a channel — upserts the channel-side
-     * `PriceListChannelDefaultGroup` mapping (one row per channel,
-     * enforced by `UNIQUE(channelId)`). The group must be assigned to the
-     * channel.
+     * Set the default group for a channel — assigns the channel-side
+     * `Channel.defaultPriceListGroup` relation custom field (one value per
+     * channel, structural since the FK lives on the channel row). The group
+     * must be assigned to the channel.
      */
     async setDefault(
         ctx: RequestContext,
@@ -338,13 +380,10 @@ export class PriceListGroupService implements OnModuleInit, OnApplicationBootstr
         if (!group) {
             throw new UserInputError(`PriceListGroup ${groupId} not found in channel`);
         }
-        const repo = this.connection.getRepository(ctx, PriceListChannelDefaultGroup);
-        const existing = await repo.findOne({ where: { channelId } });
-        if (existing) {
-            await repo.update({ id: existing.id }, { groupId });
-        } else {
-            await repo.save(new PriceListChannelDefaultGroup({ channelId, groupId }));
-        }
+        const channelRepo = this.connection.getRepository(ctx, Channel);
+        const channel = await channelRepo.findOneOrFail({ where: { id: channelId } });
+        channel.customFields.defaultPriceListGroup = group;
+        await channelRepo.save(channel);
         return this.findDefaultForChannel(ctx, channelId);
     }
 }

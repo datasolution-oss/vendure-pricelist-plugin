@@ -1,39 +1,29 @@
+import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/vdb/components/ui/select.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/vdb/components/ui/select.js';
 import { TableCell, TableRow } from '@/vdb/components/ui/table.js';
-import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
 import { api } from '@/vdb/graphql/api.js';
 import { useLingui } from '@lingui/react/macro';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
-import {
-    changePriceListGroupMutation,
-} from '../gql/mutations';
-import {
-    priceListDefaultGroupQuery,
-    priceListGroupsByChannelQuery,
-} from '../gql/queries';
+import { ChannelCodeLabel } from '@/vdb/index';
+import { changePriceListGroupMutation } from '../gql/mutations';
+import { priceListDefaultGroupQuery, priceListGroupsByChannelQuery } from '../gql/queries';
 import type { PriceListGroupsByChannelResult } from '../gql/types';
 
 interface GroupMembershipRowProps {
-    priceListId: string;
-    membershipId: string;
-    channelId: string;
-    channelCode: string;
-    currentGroupId: string;
-    currentGroupCode: string;
-    isOrigin: boolean;
-    disabled: boolean;
-    onChanged: () => void;
-    onUnshare: () => void;
+  priceListId: string;
+  membershipId: string;
+  channelId: string;
+  channelCode: string;
+  currentGroupId: string;
+  currentGroupCode: string;
+  isOrigin: boolean;
+  disabled: boolean;
+  onChanged: () => void;
+  onUnshare: () => void;
 }
 
 /**
@@ -49,126 +39,122 @@ interface GroupMembershipRowProps {
  * by channelId, so the per-row query is cheap.
  */
 export function GroupMembershipRow({
-    priceListId,
-    membershipId,
-    channelId,
-    channelCode,
-    currentGroupId,
-    currentGroupCode,
-    isOrigin,
-    disabled,
-    onChanged,
-    onUnshare,
+  priceListId,
+  membershipId,
+  channelId,
+  channelCode,
+  currentGroupId,
+  currentGroupCode,
+  isOrigin,
+  disabled,
+  onChanged,
+  onUnshare
 }: Readonly<GroupMembershipRowProps>) {
-    const { t } = useLingui();
+  const { t } = useLingui();
 
-    const { data: groupsData, isLoading } = useQuery({
-        queryKey: ['pricelist-groups-by-channel', channelId],
-        enabled: !disabled,
-        queryFn: () =>
-            api.query(priceListGroupsByChannelQuery, {
-                channelId,
-            }) as Promise<PriceListGroupsByChannelResult>,
-    });
+  const { data: groupsData, isLoading } = useQuery({
+    queryKey: ['pricelist-groups-by-channel', channelId],
+    enabled: !disabled,
+    queryFn: () =>
+      api.query(priceListGroupsByChannelQuery, {
+        channelId
+      }) as Promise<PriceListGroupsByChannelResult>
+  });
 
-    const groups = groupsData?.priceListGroupsByChannel ?? [];
+  const groups = groupsData?.priceListGroupsByChannel ?? [];
 
-    // Default group is channel-side now — resolve it to annotate the option.
-    const { data: defaultGroupData } = useQuery({
-        queryKey: ['pricelist-default-group', channelId],
-        enabled: !disabled,
-        queryFn: () =>
-            api.query(priceListDefaultGroupQuery, { channelId } as any) as Promise<{
-                priceListDefaultGroup: { id: string } | null;
-            }>,
-    });
-    const defaultGroupId = defaultGroupData?.priceListDefaultGroup?.id;
+  // Default group is channel-side now — resolve it to annotate the option.
+  const { data: defaultGroupData } = useQuery({
+    queryKey: ['pricelist-default-group', channelId],
+    enabled: !disabled,
+    queryFn: () =>
+      api.query(priceListDefaultGroupQuery, { channelId } as any) as Promise<{
+        priceListDefaultGroup: { id: string } | null
+      }>
+  });
+  const defaultGroupId = defaultGroupData?.priceListDefaultGroup?.id;
 
-    const changeMutation = useMutation({
-        mutationFn: (groupId: string) =>
-            api.mutate(changePriceListGroupMutation, {
-                priceListId,
-                channelId,
-                groupId,
-            } as any),
-        onSuccess: () => {
-            toast.success(t`Group changed`);
-            onChanged();
-        },
-        onError: err => {
-            console.error('[pricelist] changePriceListGroup failed:', err);
-            toast.error(t`Failed to change group`);
-        },
-    });
+  const changeMutation = useMutation({
+    mutationFn: (groupId: string) =>
+      api.mutate(changePriceListGroupMutation, {
+        priceListId,
+        channelId,
+        groupId
+      } as any),
+    onSuccess: () => {
+      toast.success(t`Group changed`);
+      onChanged();
+    },
+    onError: err => {
+      console.error('[pricelist] changePriceListGroup failed:', err);
+      toast.error(t`Failed to change group`);
+    }
+  });
 
-    return (
-        <TableRow>
-            <TableCell className="font-mono">{channelCode}</TableCell>
-            <TableCell>
-                {disabled ? (
-                    <span className="font-mono">{currentGroupCode}</span>
-                ) : (
-                    <Select
-                        value={currentGroupId}
-                        onValueChange={(v: string | null) => {
-                            if (v && v !== currentGroupId) {
-                                changeMutation.mutate(v);
-                            }
-                        }}
-                        disabled={isLoading || changeMutation.isPending}
-                    >
-                        <SelectTrigger size="sm" className="w-[220px]">
-                            {/*
+  return (
+    <TableRow>
+      <TableCell className="font-mono">
+        <ChannelCodeLabel code={channelCode} />
+      </TableCell>
+      <TableCell>
+        {disabled ? (
+          <span className="font-mono">{currentGroupCode}</span>
+        ) : (
+          <Select
+            value={currentGroupId}
+            onValueChange={(v: string | null) => {
+              if (v && v !== currentGroupId) {
+                changeMutation.mutate(v);
+              }
+            }}
+            disabled={isLoading || changeMutation.isPending}
+          >
+            <SelectTrigger size="sm" className="w-[220px]">
+              {/*
                               Resolve the label ourselves — base-ui's
                               auto-mirror shows the raw id when the value
                               is set from props (not a manual pick) before
                               items mount. Fall back to the known current
                               code until the channel's groups load.
                             */}
-                            <SelectValue>
-                                {(value: unknown) => {
-                                    const g = groups.find(x => x.id === value);
-                                    return g
-                                        ? `${g.name} (${g.code})`
-                                        : currentGroupCode;
-                                }}
-                            </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            {/*
+              <SelectValue>
+                {(value: unknown) => {
+                  const g = groups.find(x => x.id === value);
+                  return g ? `${g.name} (${g.code})` : currentGroupCode;
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {/*
                               Plain-string children — a mixed JSX child
                               makes the Select's value mirror fall back to
                               showing the raw id (same bug fixed in the
                               share dialog).
                             */}
-                            {groups.map(g => (
-                                <SelectItem key={g.id} value={g.id}>
-                                    {g.id === defaultGroupId
-                                        ? `${g.name} (${g.code}) — ${t`default`}`
-                                        : `${g.name} (${g.code})`}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                )}
-            </TableCell>
-            <TableCell>
-                {isOrigin && <Badge variant="success">{t`origin`}</Badge>}
-            </TableCell>
-            <TableCell className="text-right">
-                {!isOrigin && (
-                    <ConfirmationDialog
-                        title={t`Stop sharing on this channel?`}
-                        description={t`The pricelist will no longer be visible on the target channel. Items remain intact.`}
-                        confirmText={t`Stop sharing`}
-                        onConfirm={onUnshare}
-                    >
-                        <Button variant="ghost" size="sm" disabled={disabled}>
-                            {t`Stop sharing`}
-                        </Button>
-                    </ConfirmationDialog>
-                )}
-            </TableCell>
-        </TableRow>
-    );
+              {groups.map(g => (
+                <SelectItem key={g.id} value={g.id}>
+                  {g.id === defaultGroupId ? `${g.name} (${g.code}) — ${t`default`}` : `${g.name} (${g.code})`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </TableCell>
+      <TableCell>{isOrigin && <Badge variant="success">{t`origin`}</Badge>}</TableCell>
+      <TableCell className="text-right">
+        {!isOrigin && (
+          <ConfirmationDialog
+            title={t`Stop sharing on this channel?`}
+            description={t`The pricelist will no longer be visible on the target channel. Items remain intact.`}
+            confirmText={t`Stop sharing`}
+            onConfirm={onUnshare}
+          >
+            <Button variant="ghost" size="sm" disabled={disabled}>
+              {t`Stop sharing`}
+            </Button>
+          </ConfirmationDialog>
+        )}
+      </TableCell>
+    </TableRow>
+  );
 }

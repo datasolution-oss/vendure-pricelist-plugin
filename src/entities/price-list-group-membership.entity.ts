@@ -1,6 +1,6 @@
 import { DeepPartial, ID } from '@vendure/common/lib/shared-types';
 import { Channel, VendureEntity } from '@vendure/core';
-import { Column, Entity, ManyToOne, Unique } from 'typeorm';
+import { Column, Entity, Index, ManyToOne, Unique } from 'typeorm';
 
 import { PriceListGroup } from './price-list-group.entity';
 import { PriceList } from './price-list.entity';
@@ -25,6 +25,11 @@ import { PriceList } from './price-list.entity';
  */
 @Entity()
 @Unique(['priceList', 'channel'])
+// Backs `priceListsByGroup` (filter by groupId + channelId) and the
+// group-delete RESTRICT check on `groupId` — neither is a prefix of the
+// UNIQUE(priceList, channel) index, so without this they fall back to a
+// table scan.
+@Index(['groupId', 'channelId'])
 export class PriceListGroupMembership extends VendureEntity {
     constructor(input?: DeepPartial<PriceListGroupMembership>) {
         super(input);

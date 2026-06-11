@@ -304,10 +304,6 @@ export const priceListGroupDetailQuery = graphql(/* GraphQL */ `
       code
       name
       priority
-      channels {
-        id
-        code
-      }
       translations {
         id
         languageCode

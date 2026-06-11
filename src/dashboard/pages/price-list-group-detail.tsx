@@ -178,19 +178,6 @@ export function PriceListGroupDetailPage() {
                                 }
                             />
                         </FormRow>
-                        <FormRow label={t`Channels`}>
-                            <span className="flex flex-wrap gap-1">
-                                {g.channels.length > 0 ? (
-                                    g.channels.map(c => (
-                                        <code key={c.id} className="text-sm">
-                                            {c.code}
-                                        </code>
-                                    ))
-                                ) : (
-                                    <span className="text-muted-foreground">—</span>
-                                )}
-                            </span>
-                        </FormRow>
                         <FormRow label={t`Default for active channel`}>
                             {isDefaultForActiveChannel ? (
                                 <Badge variant="success">{t`Yes`}</Badge>

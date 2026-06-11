@@ -28,7 +28,7 @@ import {
 import { PriceListChannelAccess } from '../entities/price-list-channel-access.entity';
 import { PriceListGroupMembership } from '../entities/price-list-group-membership.entity';
 import { PriceListGroup } from '../entities/price-list-group.entity';
-import { PriceListValueType } from '../entities/price-list-item.entity';
+import { PriceListItem, PriceListValueType } from '../entities/price-list-item.entity';
 import { PriceListTranslation } from '../entities/price-list-translation.entity';
 import { PriceList } from '../entities/price-list.entity';
 
@@ -285,9 +285,20 @@ export class PriceListService {
 
     /**
      * Hard-delete pricelists whose grace period has expired. Called by the
-     * `purgePendingDeletionTask`. Idempotent + interruption-safe; cascade
-     * FKs clean up child tables (items, translations, memberships, channel
-     * access, etc.). Returns the count purged.
+     * `purgePendingDeletionTask`. Idempotent + interruption-safe.
+     *
+     * `PriceListItem` is purged explicitly in bounded sub-batches *before*
+     * the parent rows, because that is where the volume lives: a single
+     * pricelist may hold hundreds of thousands of items, and leaving them to
+     * the parent's `onDelete: CASCADE` would delete them all inside one
+     * transaction (long locks, large WAL). The remaining children
+     * (translations, memberships, channel access) are low-cardinality and
+     * still cascade with the parent delete.
+     *
+     * Interruption-safety is preserved: items are removed under a still
+     * soft-deleted parent, so a crash between item-purge and parent-delete
+     * just leaves the list to be re-selected on the next run (its items
+     * already gone). Returns the count of pricelists purged.
      */
     async purgePending(
         ctx: RequestContext,
@@ -308,14 +319,16 @@ export class PriceListService {
             if (candidateIds.length === 0) {
                 break;
             }
+            const ids = candidateIds.map(r => r.id);
+            // High-volume child first, in its own bounded transactions.
+            await this.purgeItemsForLists(ids, opts.batchSize);
+            // Parent + remaining low-volume children (cascade).
             await this.connection.rawConnection.transaction(async manager => {
                 await manager
                     .getRepository(PriceList)
                     .createQueryBuilder()
                     .delete()
-                    .where('id IN (:...ids)', {
-                        ids: candidateIds.map(r => r.id),
-                    })
+                    .where('id IN (:...ids)', { ids })
                     .execute();
             });
             totalPurged += candidateIds.length;
@@ -324,6 +337,35 @@ export class PriceListService {
             }
         }
         return totalPurged;
+    }
+
+    /**
+     * Delete all `PriceListItem` rows belonging to the given pricelists, in
+     * transactions of at most `batchSize` rows. Postgres has no
+     * `DELETE ... LIMIT`, so each batch is bounded via an `id IN (subquery
+     * LIMIT n)`. Loops until no rows remain for these lists.
+     */
+    private async purgeItemsForLists(ids: ID[], batchSize: number): Promise<void> {
+        const itemTable =
+            this.connection.rawConnection.getMetadata(PriceListItem).tableName;
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            const result = await this.connection.rawConnection.transaction(manager =>
+                manager
+                    .getRepository(PriceListItem)
+                    .createQueryBuilder()
+                    .delete()
+                    .where(
+                        `id IN (SELECT id FROM "${itemTable}" ` +
+                            `WHERE "priceListId" IN (:...ids) LIMIT :lim)`,
+                        { ids, lim: batchSize },
+                    )
+                    .execute(),
+            );
+            if (!result.affected || result.affected < batchSize) {
+                break;
+            }
+        }
     }
 
     // === Channel sharing ===

@@ -252,7 +252,7 @@ msgid "Default"
 msgstr "Par défaut"
 
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:163
-msgid "Default for channel"
+msgid "Default for active channel"
 msgstr "Par défaut pour le canal"
 
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:57

@@ -1,9 +1,10 @@
+import { DateTime } from '@/vdb/components/data-display/date-time.js';
+import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
 import { Badge } from '@/vdb/components/ui/badge.js';
 import { Button } from '@/vdb/components/ui/button.js';
 import { Input } from '@/vdb/components/ui/input.js';
 import { Label } from '@/vdb/components/ui/label.js';
 import { Switch } from '@/vdb/components/ui/switch.js';
-import { Textarea } from '@/vdb/components/ui/textarea.js';
 import {
     Table,
     TableBody,
@@ -11,9 +12,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/vdb/components/ui/table.js';
-import { ConfirmationDialog } from '@/vdb/components/shared/confirmation-dialog.js';
-import { DateTime } from '@/vdb/components/data-display/date-time.js';
-import { api } from '@/vdb/graphql/api.js';
+import { Textarea } from '@/vdb/components/ui/textarea.js';
 import {
     Page,
     PageActionBar,
@@ -22,6 +21,7 @@ import {
     PageLayout,
     PageTitle,
 } from '@/vdb/framework/layout-engine/page-layout.js';
+import { api } from '@/vdb/graphql/api.js';
 import { useChannel } from '@/vdb/hooks/use-channel.js';
 import { useUserSettings } from '@/vdb/hooks/use-user-settings.js';
 import { useLingui } from '@lingui/react/macro';
@@ -31,6 +31,7 @@ import { RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
+import { ChannelCodeLabel } from '@/vdb/index';
 import { GroupMembershipRow } from '../components/group-membership-row';
 import { PriceListAccessBlock } from '../components/price-list-access-block';
 import { PriceListItemsGrid } from '../components/price-list-items-grid';
@@ -326,20 +327,6 @@ export function PriceListDetailPage() {
                                 </span>
                             </div>
                         </FormRow>
-                        {/* Timezone editing is on hold (Stage 1D) — the
-                            picker isn't mounted. We still surface the
-                            stored value read-only here so it's discoverable
-                            without cluttering the list with a column.
-                            Replace this with TimezoneSelect when Stage-2
-                            lookup consumes the field. */}
-                        <FormRow label={t`Timezone`}>
-                            <div className="flex items-center gap-2">
-                                <code className="text-sm">{pl.timezone}</code>
-                                <span className="text-xs text-muted-foreground">
-                                    {t`Editing on hold.`}
-                                </span>
-                            </div>
-                        </FormRow>
                         <FormRow label={t`Priority`}>
                             <Input
                                 type="number"
@@ -374,7 +361,7 @@ export function PriceListDetailPage() {
                             />
                         </FormRow>
                         <FormRow label={t`Origin channel`}>
-                            <code className="text-sm">{pl.originChannel.code}</code>
+                            <code className="text-sm"><ChannelCodeLabel code={pl.originChannel.code} /></code>
                         </FormRow>
                     </div>
                 </PageBlock>

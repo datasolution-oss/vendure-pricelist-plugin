@@ -10,6 +10,7 @@ import {
 } from '@vendure/core';
 import { Column, Entity, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 
+import { CustomPriceListGroupFields } from '../custom-entity-fields';
 import { PriceListGroupTranslation } from './price-list-group-translation.entity';
 
 /**
@@ -25,10 +26,11 @@ import { PriceListGroupTranslation } from './price-list-group-translation.entity
  *
  * Holds NO access-scoping information — customer access is decided at the
  * `(PriceList, Channel)` level (see `PriceListChannelAccess`). The
- * "default group **per channel**" is stored channel-side in
- * `PriceListChannelDefaultGroup` (mirrors `Channel.defaultTaxZone`), so
- * there is deliberately no `isDefault` flag here: a boolean on a
- * shareable entity cannot express "default on A but not on B".
+ * "default group **per channel**" is stored channel-side as the
+ * `Channel.defaultPriceListGroup` relation custom field (mirrors
+ * `Channel.defaultTaxZone`), so there is deliberately no `isDefault` flag
+ * here: a boolean on a shareable entity cannot express "default on A but
+ * not on B".
  */
 @Entity()
 export class PriceListGroup
@@ -54,7 +56,7 @@ export class PriceListGroup
     @OneToMany(() => PriceListGroupTranslation, t => t.base, { eager: true })
     translations: Array<Translation<PriceListGroup>>;
 
-    /** See `PriceList.customFields` for rationale. */
-    @Column({ type: 'simple-json', default: '{}' })
-    customFields: { [key: string]: any } = {};
+    /** Standard Vendure custom-fields slot — see `PriceList.customFields`. */
+    @Column(() => CustomPriceListGroupFields)
+    customFields: CustomPriceListGroupFields;
 }

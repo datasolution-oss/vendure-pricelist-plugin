@@ -156,7 +156,6 @@ export interface PriceListGroupListItem {
     code: string;
     name: string;
     priority: number;
-    channels: Array<{ id: string; code: string }>;
     createdAt: string;
     updatedAt: string;
 }
