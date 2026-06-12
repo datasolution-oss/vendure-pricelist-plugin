@@ -8,9 +8,13 @@ const includePattern = ['**/e2e/**/*.e2e-spec.ts'];
 export default defineConfig({
     test: {
         include: includePattern,
-        // E2e tests share infrastructure (Elasticsearch indices, database state, ports)
-        // and must run sequentially to avoid interference between test files.
-        fileParallelism: false,
+        // E2E spec files each spin up their own test server with an isolated
+        // in-memory SQLite DB and a unique port (derived from the file index
+        // by e2e-common/test-config.ts), so they can safely run in parallel.
+        // Re-disable file parallelism if a future suite reintroduces shared
+        // infrastructure (Elasticsearch indices, on-disk DB, fixed ports, …).
+        fileParallelism: true,
+        pool: 'forks',
         /**
          * For local debugging of the e2e tests, we set a very long timeout value otherwise tests will
          * automatically fail for going over the 5 second default timeout.

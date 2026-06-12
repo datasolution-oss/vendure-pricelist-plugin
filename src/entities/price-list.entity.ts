@@ -76,10 +76,10 @@ export class PriceList
     @Column({ type: 'varchar', length: 64, default: 'UTC' })
     timezone: string;
 
-    @Column({ type: 'timestamp', nullable: true })
+    @Column({ type: Date, nullable: true })
     startDate: Date | null;
 
-    @Column({ type: 'timestamp', nullable: true })
+    @Column({ type: Date, nullable: true })
     endDate: Date | null;
 
     @Column({ default: 0 })
@@ -138,7 +138,7 @@ export class PriceList
     @OneToMany(() => PriceListGroupMembership, m => m.priceList)
     groupMemberships: PriceListGroupMembership[];
 
-    @Column({ type: 'timestamp', nullable: true })
+    @Column({ type: Date, nullable: true })
     deletedAt: Date | null;
 
     /**
