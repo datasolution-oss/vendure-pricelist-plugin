@@ -1,7 +1,9 @@
 import { DefaultJobQueuePlugin, mergeConfig } from '@vendure/core';
 import { createTestEnvironment } from '@vendure/testing';
+import path from 'path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { initialData } from '../e2e-common/e2e-initial-data';
 import { TEST_SETUP_TIMEOUT_MS, testConfig } from '../e2e-common/test-config';
 import {
     ERR_PRICELIST_ALREADY_SHARED_TO_CHANNEL,
@@ -35,7 +37,16 @@ describe('PriceList entity', () => {
     let f: PricelistTestFixtures;
 
     beforeAll(async () => {
-        f = await bootstrapPricelistFixtures(server, adminClient);
+        // `server.init()` MUST be called HERE (not in the shared helper)
+        // so the SqljsInitializer keys its cache file on this spec's
+        // filename — otherwise every spec would share the helper's
+        // cache and races would corrupt it on parallel cold starts.
+        await server.init({
+            initialData,
+            productsCsvPath: path.join(__dirname, 'fixtures/e2e-products-full.csv'),
+            customerCount: 2,
+        });
+        f = await bootstrapPricelistFixtures(adminClient);
     }, TEST_SETUP_TIMEOUT_MS);
 
     afterAll(async () => {
