@@ -65,12 +65,12 @@ export class PriceListAccessService {
         const repo = this.connection.getRepository(ctx, PriceListChannelAccess);
         const existing = await repo.findOne({
             where: { priceListId, channelId },
-            relations: ['customers', 'customerGroups'],
+            relations: ['customers', 'customerGroups', 'channel'],
         });
         if (existing) {
             return existing;
         }
-        return repo.save(
+        const saved = await repo.save(
             new PriceListChannelAccess({
                 priceListId,
                 channelId,
@@ -79,6 +79,10 @@ export class PriceListAccessService {
                 customerGroups: [],
             }),
         );
+        return repo.findOneOrFail({
+            where: { id: saved.id },
+            relations: ['customers', 'customerGroups', 'channel'],
+        });
     }
 
     /** Read-only fetch of the access row (or undefined) without creating one. */
@@ -89,7 +93,7 @@ export class PriceListAccessService {
     ): Promise<PriceListChannelAccess | null> {
         return this.connection
             .getRepository(ctx, PriceListChannelAccess)
-            .findOne({ where: { priceListId, channelId } });
+            .findOne({ where: { priceListId, channelId }, relations: ['channel'] });
     }
 
     async setAssignedToEveryone(
@@ -226,11 +230,11 @@ export class PriceListAccessService {
         qb.innerJoin(
             'price_list_channel_access_customer_group',
             'placcg',
-            'placcg."customerGroupId" = customer_group.id AND placcg."accessId" = :aid',
+            'placcg."customerGroupId" = customergroup.id AND placcg."accessId" = :aid',
             { aid: access.id },
         );
         if (filter && filter.trim().length > 0) {
-            qb.andWhere('LOWER(customer_group."name") LIKE :flt', {
+            qb.andWhere('LOWER(customergroup."name") LIKE :flt', {
                 flt: `%${filter.trim().toLowerCase()}%`,
             });
         }

@@ -91,7 +91,7 @@ export function CreatePriceListGroupDialog({
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <Label htmlFor="new-grp-name">{t`Name (English)`}</Label>
+                        <Label htmlFor="new-grp-name">{t`Name`}</Label>
                         <Input
                             id="new-grp-name"
                             value={name}

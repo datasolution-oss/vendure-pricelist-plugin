@@ -320,7 +320,7 @@ export function PriceListDetailPage() {
                                 >
                                     {pl.valueType === 'PERCENTAGE'
                                         ? t`Percentage discounts`
-                                        : t`Absolute prices`}
+                                        : t`Fixed prices`}
                                 </Badge>
                                 <span className="text-xs text-muted-foreground">
                                     {t`Locked once created.`}
