@@ -18,6 +18,12 @@ import {
 } from '@vendure/core';
 import { IsNull } from 'typeorm';
 
+import {
+    ERR_PRICELIST_ITEM_DUPLICATE,
+    ERR_PRICELIST_PIVOT_DUPLICATE_CELL,
+    ERR_PRICELIST_PIVOT_INVALID_STEP_QUANTITY,
+    ERR_PRICELIST_PIVOT_INVALID_VALUE,
+} from '../constants';
 import { PriceListItem } from '../entities';
 
 import { PriceListService } from './price-list.service';
@@ -334,11 +340,7 @@ export class PriceListItemService {
             },
         });
         if (existing) {
-            throw new UserInputError(
-                `An item already exists for (variant ${input.productVariantId}, ` +
-                    `${input.currencyCode}, stepQuantity ${stepQuantity}) ` +
-                    `in PriceList ${input.priceListId}`,
-            );
+            throw new UserInputError(ERR_PRICELIST_ITEM_DUPLICATE);
         }
 
         const item = new PriceListItem({
@@ -399,20 +401,14 @@ export class PriceListItemService {
         input.rows.forEach(r => {
             const key = cellKey(r.currencyCode, r.stepQuantity);
             if (seen.has(key)) {
-                throw new UserInputError(
-                    `Duplicate cell in pivot payload: (${r.currencyCode}, stepQuantity ${r.stepQuantity})`,
-                );
+                throw new UserInputError(ERR_PRICELIST_PIVOT_DUPLICATE_CELL);
             }
             seen.add(key);
             if (!Number.isInteger(r.stepQuantity) || r.stepQuantity < 1) {
-                throw new UserInputError(
-                    `stepQuantity must be a positive integer; got ${r.stepQuantity}`,
-                );
+                throw new UserInputError(ERR_PRICELIST_PIVOT_INVALID_STEP_QUANTITY);
             }
             if (!Number.isInteger(r.value) || r.value < 0) {
-                throw new UserInputError(
-                    `value must be a non-negative integer; got ${r.value}`,
-                );
+                throw new UserInputError(ERR_PRICELIST_PIVOT_INVALID_VALUE);
             }
         });
 

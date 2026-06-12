@@ -21,8 +21,10 @@ import {
 import { IsNull } from 'typeorm';
 
 import {
+    ERR_PRICELIST_ALREADY_SHARED_TO_CHANNEL,
     ERR_PRICELIST_GROUP_CHANNEL_MISMATCH,
     ERR_PRICELIST_NOT_SHARED_TO_CHANNEL,
+    ERR_PRICELIST_ORIGIN_CHANNEL_NOT_REMOVABLE,
     ERR_PRICELIST_READONLY_NON_ORIGIN_CHANNEL,
 } from '../constants';
 import { PriceListChannelAccess } from '../entities/price-list-channel-access.entity';
@@ -396,9 +398,7 @@ export class PriceListService {
             throw new UserInputError(`PriceList ${list.id} not found`);
         }
         if (withChannels.channels.some(c => idsAreEqual(c.id, input.channelId))) {
-            throw new UserInputError(
-                `PriceList ${input.priceListId} is already shared to channel ${input.channelId}`,
-            );
+            throw new UserInputError(ERR_PRICELIST_ALREADY_SHARED_TO_CHANNEL);
         }
         withChannels.channels.push(targetChannel);
         await this.connection.getRepository(ctx, PriceList).save(withChannels);
@@ -437,9 +437,7 @@ export class PriceListService {
             throw new UserInputError(`PriceList ${priceListId} not found`);
         }
         if (idsAreEqual(channelId, list.originChannelId)) {
-            throw new UserInputError(
-                `Cannot remove a PriceList from its origin channel; delete the list instead`,
-            );
+            throw new UserInputError(ERR_PRICELIST_ORIGIN_CHANNEL_NOT_REMOVABLE);
         }
         const isOrigin = idsAreEqual(ctx.channelId, list.originChannelId);
         const isSelfRemoval = idsAreEqual(ctx.channelId, channelId);
