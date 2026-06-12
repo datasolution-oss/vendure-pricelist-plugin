@@ -34,9 +34,7 @@ export const adminApiExtensions = gql`
         queries (all take a \`channelId\`). Not exposed inline here: a list
         can carry thousands of assignments per channel.
         """
-        translations: [PriceListTranslation!]!
-        customFields: JSON
-        createdAt: DateTime!
+        translations: [PriceListTranslation!]!        createdAt: DateTime!
         updatedAt: DateTime!
         deletedAt: DateTime
         """
@@ -91,9 +89,7 @@ export const adminApiExtensions = gql`
         discount (1000 = -10%).
         """
         value: Int!
-        stepQuantity: Int!
-        customFields: JSON
-        createdAt: DateTime!
+        stepQuantity: Int!        createdAt: DateTime!
         updatedAt: DateTime!
     }
 
@@ -115,9 +111,7 @@ export const adminApiExtensions = gql`
         \`priceListDefaultGroup(channelId)\`.
         """
         channel: Channel!
-        translations: [PriceListGroupTranslation!]!
-        customFields: JSON
-        createdAt: DateTime!
+        translations: [PriceListGroupTranslation!]!        createdAt: DateTime!
         updatedAt: DateTime!
     }
 
@@ -388,9 +382,7 @@ export const adminApiExtensions = gql`
         priority: Int!
         enabled: Boolean
         groupId: ID
-        translations: [PriceListTranslationInput!]!
-        customFields: JSON
-    }
+        translations: [PriceListTranslationInput!]!    }
 
     """
     \`valueType\` is intentionally NOT updatable — changing it mid-life would
@@ -405,25 +397,19 @@ export const adminApiExtensions = gql`
         endDate: DateTime
         priority: Int
         enabled: Boolean
-        translations: [PriceListTranslationInput!]
-        customFields: JSON
-    }
+        translations: [PriceListTranslationInput!]    }
 
     input CreatePriceListItemInput {
         priceListId: ID!
         productVariantId: ID!
         currencyCode: CurrencyCode!
         value: Int!
-        stepQuantity: Int
-        customFields: JSON
-    }
+        stepQuantity: Int    }
 
     input UpdatePriceListItemInput {
         id: ID!
         value: Int
-        stepQuantity: Int
-        customFields: JSON
-    }
+        stepQuantity: Int    }
 
     input PriceListVariantPivotRowInput {
         currencyCode: CurrencyCode!
@@ -453,15 +439,11 @@ export const adminApiExtensions = gql`
     input CreatePriceListGroupInput {
         code: String!
         priority: Int!
-        translations: [PriceListGroupTranslationInput!]!
-        customFields: JSON
-    }
+        translations: [PriceListGroupTranslationInput!]!    }
 
     input UpdatePriceListGroupInput {
         id: ID!
         code: String
         priority: Int
-        translations: [PriceListGroupTranslationInput!]
-        customFields: JSON
-    }
+        translations: [PriceListGroupTranslationInput!]    }
 `;

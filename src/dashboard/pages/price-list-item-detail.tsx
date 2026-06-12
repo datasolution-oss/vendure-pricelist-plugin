@@ -294,7 +294,7 @@ export function PriceListItemDetailPage() {
                             >
                                 {valueType === 'PERCENTAGE'
                                     ? t`Percentage discounts`
-                                    : t`Absolute prices`}
+                                    : t`Fixed prices`}
                             </Badge>
                         </span>
                     }

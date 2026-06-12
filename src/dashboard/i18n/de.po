@@ -78,8 +78,8 @@ msgstr "Absolut"
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:146
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:301
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:297
-msgid "Absolute prices"
-msgstr "Absolute Preise"
+msgid "Fixed prices"
+msgstr "Festpreise"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:290
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:567
@@ -99,8 +99,8 @@ msgid "Add customer…"
 msgstr "Kunde hinzufügen…"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:172
-msgid "Add item"
-msgstr "Position hinzufügen"
+msgid "Add item to pricelist"
+msgstr "Position zur Preisliste hinzufügen"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:177
 msgid "Add pricelist item"
@@ -567,6 +567,7 @@ msgid "Min qty"
 msgstr "Mindestmenge"
 
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:125
+#: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:94
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:275
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:145
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:235
@@ -579,10 +580,6 @@ msgstr "Name"
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:229
 #~ msgid "Name ({localeLabel})"
 #~ msgstr ""
-
-#: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:94
-msgid "Name (English)"
-msgstr "Name (Englisch)"
 
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:77
 msgid "New group"

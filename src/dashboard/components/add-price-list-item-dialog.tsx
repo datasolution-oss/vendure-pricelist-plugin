@@ -169,7 +169,7 @@ export function AddPriceListItemDialog({
             <DialogTrigger render={
                 <Button variant="outline" size="sm" disabled={disabled}>
                     <Plus className="h-4 w-4 mr-1" />
-                    {t`Add item`}
+                    {t`Add item to pricelist`}
                 </Button>
             } />
             <DialogContent>
