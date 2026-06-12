@@ -1,5 +1,4 @@
-import { SimpleGraphQLClient, TestServer } from '@vendure/testing';
-import path from 'path';
+import { SimpleGraphQLClient } from '@vendure/testing';
 
 import { awaitRunningJobs } from './await-running-jobs';
 import {
@@ -10,7 +9,6 @@ import {
     getProductVariantListDocument,
 } from './graphql/shared-definitions';
 import { ACTIVE_CHANNEL, DEFAULT_GROUP } from './graphql/pricelist-operations';
-import { initialData } from '../e2e-common/e2e-initial-data';
 
 export interface PricelistTestFixtures {
     /** The default channel (origin for every list created in tests). */
@@ -32,23 +30,22 @@ export interface PricelistTestFixtures {
 }
 
 /**
- * Boots the server with the standard pricelist fixture data + creates a
- * second channel and pins variants V1/V2 to the right channels. Called
- * from each spec file's `beforeAll`.
+ * Sets up the shared pricelist fixtures: superadmin login, second
+ * channel, V1/V2 variants pinned to the right channels, default groups,
+ * one customer group, customer ids.
  *
- * Returns the live `PricelistTestFixtures` so the spec can use ids/tokens
- * directly. Caller is responsible for keeping the adminClient logged in
- * as superadmin (this function leaves it that way on exit).
+ * **`server.init(...)` MUST be called by the spec file itself, BEFORE
+ * this helper.** The SqljsInitializer keys its cache file on
+ * `TestServer.init`'s caller filename (via `getCallerFilename(1)`), so
+ * calling it from this shared helper would make every spec file share
+ * the same `pricelist-test-env.ts.sqlite` cache — causing parallel
+ * forks to race on the first populate.
+ *
+ * Caller keeps the adminClient logged in as superadmin on exit.
  */
 export async function bootstrapPricelistFixtures(
-    server: TestServer,
     adminClient: SimpleGraphQLClient,
 ): Promise<PricelistTestFixtures> {
-    await server.init({
-        initialData,
-        productsCsvPath: path.join(__dirname, 'fixtures/e2e-products-full.csv'),
-        customerCount: 2,
-    });
     await adminClient.asSuperAdmin();
     // Generous timeout — the product import triggers a number of jobs.
     await awaitRunningJobs(adminClient, 20_000, 1000);
