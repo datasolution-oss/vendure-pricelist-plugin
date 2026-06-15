@@ -8,11 +8,11 @@ include:
     inputs:
       tag: fast
 
-  - component: $CI_SERVER_FQDN/ci-components/vendure/publish-module@2.0.0
+  - component: $CI_SERVER_FQDN/ci-components/vendure/publish-module@2.0.1
     inputs:
       npm-registery-token: "${NPM_REGISTERY_TOKEN}"
 
-  - component: $CI_SERVER_FQDN/ci-components/vendure/publish-module-public@2.0.0
+  - component: $CI_SERVER_FQDN/ci-components/vendure/publish-module-public@2.0.1
     inputs:
       npm-registery-token: "${PUBLIC_NPM_REGISTERY_TOKEN}"
       github-repository: "github:datasolution-oss/vendure-pricelist-plugin"
