@@ -1,6 +1,12 @@
 import { LanguageCode, PluginCommonModule, Type, VendurePlugin } from '@vendure/core';
 
 import { adminApiExtensions, ALL_RESOLVERS } from './api';
+import {
+    DefaultPriceListPriceCalculationStrategy,
+    DefaultPriceListResolutionStrategy,
+    HalfUpToMinorUnitRoundingStrategy,
+    HighestPriorityWinsSelectionStrategy,
+} from './config/defaults';
 import { PRICELIST_PLUGIN_OPTIONS } from './constants';
 import { DEFAULT_PRICE_LIST_GROUP_FIELD } from './custom-fields';
 import { ALL_ENTITIES } from './entities';
@@ -14,10 +20,61 @@ import {
 } from './permissions';
 import { purgePendingDeletionTask } from './scheduled-tasks/purge-pending-deletion-task';
 import { ALL_SERVICES } from './services';
+import { PricelistOrderItemPriceCalculationStrategy } from './strategies/pricelist-order-item-price-calculation.strategy';
+import { PricelistVariantPriceCalculationStrategy } from './strategies/pricelist-variant-price-calculation.strategy';
 import { PluginInitOptions } from './types';
 
 const DEFAULT_PURGE_AFTER_MS = 60 * 60 * 1000; // 1 hour
 const DEFAULT_PURGE_BATCH_SIZE = 100;
+const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour safety cap for Layer A
+
+/**
+ * Parses `PRICELIST_KILL_CHANNELS` (comma-separated channel codes) into
+ * the `killSwitchPerChannel` shape — keyed on code, since ops write the
+ * env var with channel codes, not numeric ids. The resolution strategy
+ * checks the map against both `ctx.channelId` and `ctx.channel.code`.
+ */
+function parseKillSwitchEnv(): Record<string, boolean> {
+    const raw = process.env.PRICELIST_KILL_CHANNELS;
+    if (!raw) return {};
+    return raw
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
+        .reduce<Record<string, boolean>>((acc, code) => {
+            acc[code] = true;
+            return acc;
+        }, {});
+}
+
+/**
+ * Merges defaults into the consumer's init options. Strategy instances are
+ * constructed once per `init()` call (which runs at most once per process).
+ */
+function withDefaults(options: PluginInitOptions): PluginInitOptions {
+    return {
+        purgePendingDeletionAfterMs:
+            options.purgePendingDeletionAfterMs ?? DEFAULT_PURGE_AFTER_MS,
+        purgePendingDeletionSchedule: options.purgePendingDeletionSchedule,
+        purgePendingDeletionBatchSize:
+            options.purgePendingDeletionBatchSize ?? DEFAULT_PURGE_BATCH_SIZE,
+        resolutionStrategy:
+            options.resolutionStrategy ?? new DefaultPriceListResolutionStrategy(),
+        selectionStrategy:
+            options.selectionStrategy ?? new HighestPriorityWinsSelectionStrategy(),
+        calculationStrategy:
+            options.calculationStrategy ??
+            new DefaultPriceListPriceCalculationStrategy(),
+        roundingStrategy:
+            options.roundingStrategy ?? new HalfUpToMinorUnitRoundingStrategy(),
+        additionalValidityPredicates: options.additionalValidityPredicates ?? [],
+        killSwitchPerChannel: {
+            ...parseKillSwitchEnv(),
+            ...(options.killSwitchPerChannel ?? {}),
+        },
+        defaultCacheTtlMs: options.defaultCacheTtlMs ?? DEFAULT_CACHE_TTL_MS,
+    };
+}
 
 @VendurePlugin({
     imports: [PluginCommonModule],
@@ -38,6 +95,20 @@ const DEFAULT_PURGE_BATCH_SIZE = 100;
             assignPriceListGroupPermission,
             managePriceListAccessPermission,
         );
+
+        // Stage 3 — hook the variant price calculation so resolved
+        // pricelist prices flow into Vendure's catalog/shop pricing.
+        // Single-strategy slot: our subclass extends the default, so the
+        // no-pricelist path is unchanged. Last plugin to set this wins —
+        // mind load order if another plugin also overrides it.
+        config.catalogOptions.productVariantPriceCalculationStrategy =
+            new PricelistVariantPriceCalculationStrategy();
+
+        // Order-line price resolution with the line quantity, so
+        // stepQuantity tiers apply on the cart/order (the catalog hook
+        // above only resolves at qty 1). Reverses PLAN-STAGE-3 §Q2.
+        config.orderOptions.orderItemPriceCalculationStrategy =
+            new PricelistOrderItemPriceCalculationStrategy();
 
         // Channel-side default PriceListGroup (replaces the former
         // `PriceListChannelDefaultGroup` entity). A relation custom field on
@@ -108,7 +179,7 @@ export class PricelistPlugin {
     static options: PluginInitOptions = {};
 
     static init(options: PluginInitOptions = {}): Type<PricelistPlugin> {
-        this.options = options;
+        this.options = withDefaults(options);
         return PricelistPlugin;
     }
 }

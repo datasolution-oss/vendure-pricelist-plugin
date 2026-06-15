@@ -517,6 +517,24 @@ For value `4251.5`:
 
 ### Q3 — Caching (two layers)
 
+> **REVISED 2026-06-15 — invalidation implementation.** The
+> `PriceListEvent` / `PriceListGroupEvent` / `PriceListChannelEvent` /
+> `PriceListAssignmentEvent` listed below were never emitted by the
+> services (the pre-rework design assumed them). Rather than add event
+> emission to ~15 write methods, `PriceListCacheInvalidatorService` now
+> registers a **TypeORM `EntitySubscriber`**: any insert/update/remove on
+> a pricelist entity (`PriceList`, `PriceListItem`, `PriceListGroup`,
+> `PriceListGroupMembership`, and their translations) busts the
+> `pricelist:resolution` + `pricelist:computed` namespaces wholesale. This
+> is a coarser (channel-agnostic) nuke than the per-channel tags below,
+> but admin writes are rare so the trade-off is fine, and it guarantees
+> create/update/delete/share/group-change/item-edit take effect
+> immediately. The **precise** paths are kept for the hot, frequent
+> signals: `PriceListAccessChangeEvent` (per-customer / per-channel),
+> `CustomerGroupChangeEvent` (per-customer), and `ProductVariantPriceEvent`
+> (per-variant). `PriceListChannelAccess` writes are excluded from the
+> entity subscriber so access changes stay on the precise path.
+
 #### Layer A — accessible lists per customer
 
 - **Service:** `CacheService` (process-wide; from Stage 0 §0.8).
