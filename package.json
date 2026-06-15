@@ -13,7 +13,6 @@
   },
   "peerDependencies": {
     "@vendure/core": "^3.6.0",
-    "jose": "^6.1.3",
     "@vendure/dashboard": "^3.6.0"
   },
   "devDependencies": {
