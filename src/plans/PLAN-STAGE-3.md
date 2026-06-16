@@ -102,7 +102,46 @@ they do not change *which* `ProductVariantPrice` row is selected. The
 sibling `ProductVariantPriceSelectionStrategy` slot is therefore NOT
 hooked.
 
-### Q2 — Single hook is sufficient (non-decision recorded)
+### Q2 — Two hooks: variant price (qty 1) + order item (quantity tiers)
+
+> **REVISED 2026-06-15 — decision reversed.** The original Q2 (kept below
+> for the record) said NOT to override `OrderItemPriceCalculationStrategy`.
+> That made `stepQuantity` tiers **dormant**: the catalog hook resolves at
+> quantity 1, and the default order-item strategy just snapshots that
+> qty-1 `listPrice`, so a volume tier (`stepQuantity ≥ 2`) could never take
+> effect on an order line. Since tiers are a **defined, user-facing
+> feature** (the dashboard lets merchandisers set per-`stepQuantity`
+> prices), they must apply. We therefore **do** override
+> `OrderItemPriceCalculationStrategy`.
+
+**Current design — both hooks:**
+
+- `ProductVariantPriceCalculationStrategy` (§2.1) → per-unit **catalog/PDP**
+  price, resolved at `quantity = 1`.
+- `OrderItemPriceCalculationStrategy.calculateUnitPrice(ctx, variant,
+  customFields, order, quantity)` → **order-line** unit price, re-resolved
+  with the line's actual `quantity` so the correct tier wins. Implemented
+  in `strategies/pricelist-order-item-price-calculation.strategy.ts`
+  (implements the interface directly — the default class's typed signature
+  is narrower than the interface; the no-pricelist fallback inlines the
+  default behaviour: pass `variant.listPrice` through). Registered at
+  `orderOptions.orderItemPriceCalculationStrategy`.
+
+**Accepted trade-off:** the order line no longer strictly freezes the
+qty-1 PDP price — it reflects the price for the **quantity actually
+ordered**, re-resolved against **current** validity at add/adjust time. A
+list that expired between PDP view and add-to-cart will therefore not
+apply on the line. This is the correct behaviour for quantity-break
+pricing and is the intended trade-off of this reversal.
+
+The provenance snapshot onto frozen order lines (meta-plan §0.2.11)
+remains a separate concern handled by an `OrderLineEvent('created')`
+subscriber — NOT by the order-item strategy. See §2.4.
+
+---
+
+<details>
+<summary>Original Q2 (superseded 2026-06-15) — kept for the record</summary>
 
 `OrderItemPriceCalculationStrategy` is NOT overridden. Vendure's default
 behavior at the order-line level — snapshot the variant's
@@ -123,6 +162,8 @@ view and add-to-cart).
 The provenance snapshot onto frozen order lines (meta-plan §0.2.11) is
 a separate concern handled by an `OrderLineEvent('created')` subscriber,
 NOT by overriding the order-item strategy. See §2.4 below.
+
+</details>
 
 ### Q3 — Tax handling
 

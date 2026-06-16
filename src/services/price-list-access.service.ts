@@ -3,6 +3,7 @@ import { ID } from '@vendure/common/lib/shared-types';
 import {
     Customer,
     CustomerGroup,
+    EventBus,
     IllegalOperationError,
     ListQueryBuilder,
     PaginatedList,
@@ -16,6 +17,7 @@ import { IsNull } from 'typeorm';
 import { ERR_PRICELIST_NOT_SHARED_TO_CHANNEL } from '../constants';
 import { PriceListChannelAccess } from '../entities/price-list-channel-access.entity';
 import { PriceList } from '../entities/price-list.entity';
+import { PriceListAccessChangeEvent } from '../events/price-list-access-change.event';
 
 /**
  * Manages customer / customer-group access for a PriceList, scoped per
@@ -33,6 +35,7 @@ export class PriceListAccessService {
     constructor(
         private connection: TransactionalConnection,
         private listQueryBuilder: ListQueryBuilder,
+        private eventBus: EventBus,
     ) {}
 
     /**
@@ -106,6 +109,17 @@ export class PriceListAccessService {
         await this.connection
             .getRepository(ctx, PriceListChannelAccess)
             .update({ id: row.id }, { assignedToEveryone: assigned });
+        await this.eventBus.publish(
+            new PriceListAccessChangeEvent(
+                ctx,
+                priceListId,
+                channelId,
+                'everyone',
+                [],
+                [],
+                assigned,
+            ),
+        );
         return (await this.getAccess(ctx, priceListId, channelId)) as PriceListChannelAccess;
     }
 
@@ -125,6 +139,15 @@ export class PriceListAccessService {
             ...customers.filter(c => !existing.has(String(c.id))),
         ];
         await this.connection.getRepository(ctx, PriceListChannelAccess).save(row);
+        await this.eventBus.publish(
+            new PriceListAccessChangeEvent(
+                ctx,
+                priceListId,
+                channelId,
+                'customer',
+                customerIds,
+            ),
+        );
         return row;
     }
 
@@ -138,6 +161,15 @@ export class PriceListAccessService {
         const removeSet = new Set(customerIds.map(String));
         row.customers = row.customers.filter(c => !removeSet.has(String(c.id)));
         await this.connection.getRepository(ctx, PriceListChannelAccess).save(row);
+        await this.eventBus.publish(
+            new PriceListAccessChangeEvent(
+                ctx,
+                priceListId,
+                channelId,
+                'customer',
+                customerIds,
+            ),
+        );
         return row;
     }
 
@@ -157,6 +189,16 @@ export class PriceListAccessService {
             ...cgs.filter(c => !existing.has(String(c.id))),
         ];
         await this.connection.getRepository(ctx, PriceListChannelAccess).save(row);
+        await this.eventBus.publish(
+            new PriceListAccessChangeEvent(
+                ctx,
+                priceListId,
+                channelId,
+                'customerGroup',
+                [],
+                customerGroupIds,
+            ),
+        );
         return row;
     }
 
@@ -172,6 +214,16 @@ export class PriceListAccessService {
             c => !removeSet.has(String(c.id)),
         );
         await this.connection.getRepository(ctx, PriceListChannelAccess).save(row);
+        await this.eventBus.publish(
+            new PriceListAccessChangeEvent(
+                ctx,
+                priceListId,
+                channelId,
+                'customerGroup',
+                [],
+                customerGroupIds,
+            ),
+        );
         return row;
     }
 
