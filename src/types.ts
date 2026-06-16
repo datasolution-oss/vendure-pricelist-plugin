@@ -98,4 +98,15 @@ export interface PluginInitOptions {
      * @default 3_600_000 (1 hour)
      */
     defaultCacheTtlMs?: number;
+
+    /**
+     * Expose `ProductVariant.priceListBadge` on the Shop API (the winning
+     * pricelist's code + name, for storefront marketing labels). The
+     * `originalPrice` / `originalPriceWithTax` strike-through fields are
+     * always exposed; only the badge is gated, since the list code/name
+     * may be considered an info leak by some merchants.
+     *
+     * @default true
+     */
+    exposeBadgeOnShopApi?: boolean;
 }

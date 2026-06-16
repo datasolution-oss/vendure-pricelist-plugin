@@ -1,5 +1,3 @@
-import { CurrencyCode } from '@vendure/common/lib/generated-types';
-import { ID } from '@vendure/common/lib/shared-types';
 import { Injector, RequestContextCacheService } from '@vendure/core';
 import { DefaultProductVariantPriceCalculationStrategy } from '@vendure/core/dist/config/catalog/default-product-variant-price-calculation-strategy';
 import { ProductVariantPriceCalculationArgs } from '@vendure/core/dist/config/catalog/product-variant-price-calculation-strategy';
@@ -7,6 +5,8 @@ import { PriceCalculationResult } from '@vendure/core/dist/common/types/common-t
 
 import { PriceListLookupService } from '../services/price-list-lookup.service';
 import { ResolvedPriceProvenanceEntry } from '../types/resolved-price';
+
+import { pricelistOriginalCacheKey } from './pricelist-original-cache';
 
 /**
  * Stage 3 — the single integration seam between the Stage 2 lookup
@@ -64,7 +64,7 @@ export class PricelistVariantPriceCalculationStrategy extends DefaultProductVari
 
         this.requestCache.set(
             args.ctx,
-            this.cacheKey(args.productVariant.id, args.ctx.currencyCode),
+            pricelistOriginalCacheKey(args.productVariant.id, args.ctx.currencyCode),
             {
                 originalPrice: originalResult.price,
                 priceIncludesTax: originalResult.priceIncludesTax,
@@ -75,19 +75,14 @@ export class PricelistVariantPriceCalculationStrategy extends DefaultProductVari
         return adjustedResult;
     }
 
-    private cacheKey(variantId: ID, currency: CurrencyCode): string {
-        return `pricelist:original:${variantId}:${currency}`;
-    }
-
     private badgeFromProvenance(
         provenance: ResolvedPriceProvenanceEntry[],
-    ): { code: string; label: string } | null {
+    ): { code: string; listId: import('@vendure/common/lib/shared-types').ID } | null {
         // The badge is the last-applied (highest-priority) entry — the
-        // "last word" in the cascade, the most consumer-facing one.
+        // "last word" in the cascade, the most consumer-facing one. The
+        // resolver turns `listId` into the translated PriceList.name label.
         if (provenance.length === 0) return null;
         const last = provenance[provenance.length - 1];
-        // listCode for both is a placeholder; the Shop API surface (§2.3)
-        // resolves `label` to PriceList.name when it's built.
-        return { code: last.listCode, label: last.listCode };
+        return { code: last.listCode, listId: last.listId };
     }
 }

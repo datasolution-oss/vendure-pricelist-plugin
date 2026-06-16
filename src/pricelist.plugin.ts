@@ -1,6 +1,6 @@
 import { LanguageCode, PluginCommonModule, Type, VendurePlugin } from '@vendure/core';
 
-import { adminApiExtensions, ALL_RESOLVERS } from './api';
+import { adminApiExtensions, ALL_RESOLVERS, ALL_SHOP_RESOLVERS, shopApiExtensions } from './api';
 import {
     DefaultPriceListPriceCalculationStrategy,
     DefaultPriceListResolutionStrategy,
@@ -22,6 +22,7 @@ import { purgePendingDeletionTask } from './scheduled-tasks/purge-pending-deleti
 import { ALL_SERVICES } from './services';
 import { PricelistOrderItemPriceCalculationStrategy } from './strategies/pricelist-order-item-price-calculation.strategy';
 import { PricelistVariantPriceCalculationStrategy } from './strategies/pricelist-variant-price-calculation.strategy';
+import { OrderLineProvenanceSubscriber } from './subscribers/order-line-provenance.subscriber';
 import { PluginInitOptions } from './types';
 
 const DEFAULT_PURGE_AFTER_MS = 60 * 60 * 1000; // 1 hour
@@ -73,6 +74,7 @@ function withDefaults(options: PluginInitOptions): PluginInitOptions {
             ...(options.killSwitchPerChannel ?? {}),
         },
         defaultCacheTtlMs: options.defaultCacheTtlMs ?? DEFAULT_CACHE_TTL_MS,
+        exposeBadgeOnShopApi: options.exposeBadgeOnShopApi ?? true,
     };
 }
 
@@ -80,12 +82,17 @@ function withDefaults(options: PluginInitOptions): PluginInitOptions {
     imports: [PluginCommonModule],
     providers: [
         ...ALL_SERVICES,
+        OrderLineProvenanceSubscriber,
         { provide: PRICELIST_PLUGIN_OPTIONS, useFactory: () => PricelistPlugin.options },
     ],
     entities: ALL_ENTITIES,
     adminApiExtensions: {
         schema: adminApiExtensions,
         resolvers: ALL_RESOLVERS,
+    },
+    shopApiExtensions: {
+        schema: shopApiExtensions,
+        resolvers: ALL_SHOP_RESOLVERS,
     },
     configuration: config => {
         // Normalise options with defaults even when the plugin was added
@@ -117,6 +124,19 @@ function withDefaults(options: PluginInitOptions): PluginInitOptions {
         // above only resolves at qty 1). Reverses PLAN-STAGE-3 §Q2.
         config.orderOptions.orderItemPriceCalculationStrategy =
             new PricelistOrderItemPriceCalculationStrategy();
+
+        // Stage 3 §2.4 — denormalised pricelist provenance snapshot on the
+        // order line (support/forensics). Written by
+        // OrderLineProvenanceSubscriber on line creation. Internal + readonly
+        // JSON text; never queried by id.
+        config.customFields.OrderLine.push({
+            name: 'pricelistProvenance',
+            type: 'text',
+            nullable: true,
+            public: false,
+            readonly: true,
+            internal: true,
+        });
 
         // Channel-side default PriceListGroup (replaces the former
         // `PriceListChannelDefaultGroup` entity). A relation custom field on
