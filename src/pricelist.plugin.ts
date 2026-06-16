@@ -88,6 +88,14 @@ function withDefaults(options: PluginInitOptions): PluginInitOptions {
         resolvers: ALL_RESOLVERS,
     },
     configuration: config => {
+        // Normalise options with defaults even when the plugin was added
+        // without `.init()` (bare `PricelistPlugin`). The pricing strategies
+        // below are registered unconditionally and call the resolution
+        // strategy, so the strategy slots MUST be populated or every variant
+        // price calc would crash. `withDefaults` is idempotent (the `??`
+        // keeps any already-provided strategy instances).
+        PricelistPlugin.options = withDefaults(PricelistPlugin.options);
+
         config.authOptions.customPermissions.push(
             priceListPermission,
             priceListGroupPermission,
