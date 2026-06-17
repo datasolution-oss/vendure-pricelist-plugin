@@ -185,14 +185,13 @@ describe('Pricing (Stage 2/3)', () => {
     /**
      * Fresh-list helper: creates an `everyone`-accessible pricelist with
      * one ABSOLUTE/PERCENTAGE row on our test variant + optional explicit
-     * priority/group. Returns the list id so the test can later delete it
+     * group. Returns the list id so the test can later delete it
      * (keeping subsequent tests free of cross-contamination).
      */
     async function makeList(opts: {
         code: string;
         valueType: 'ABSOLUTE' | 'PERCENTAGE';
         rows: Array<{ stepQuantity: number; value: number }>;
-        priority?: number;
         groupId?: string;
         everyone?: boolean;
         enabled?: boolean;
@@ -202,7 +201,6 @@ describe('Pricing (Stage 2/3)', () => {
             input: {
                 code: opts.code,
                 valueType: opts.valueType,
-                priority: opts.priority ?? 1,
                 enabled: opts.enabled ?? true,
                 startDate: opts.startDate ?? null,
                 groupId: opts.groupId ?? undefined,
@@ -352,7 +350,6 @@ describe('Pricing (Stage 2/3)', () => {
             input: {
                 code: 'targeted-group',
                 valueType: 'ABSOLUTE',
-                priority: 1,
                 translations: [{ languageCode: 'en', name: 'Targeted group' }],
             },
         });

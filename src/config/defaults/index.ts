@@ -6,7 +6,6 @@ export * from './half-up-to-minor-unit.rounding-strategy';
 export * from './half-down-to-minor-unit.rounding-strategy';
 export * from './bankers.rounding-strategy';
 export * from './pick-tier-item';
-export * from './highest-priority-wins.selection-strategy';
 export * from './cheapest-wins.selection-strategy';
 export * from './most-recent-wins.selection-strategy';
 export * from './default-price-list-resolution.strategy';

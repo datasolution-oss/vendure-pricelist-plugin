@@ -192,22 +192,10 @@ export class DefaultPriceListResolutionStrategy
             }
         }
 
-        // Sort candidates within each group (priority DESC, then
-        // startDate ASC nulls first, then id ASC for determinism — see
-        // PLAN-STAGE-2 §Q7.2 on the deterministic tiebreaker decision).
-        for (const entry of groupMap.values()) {
-            entry.candidates.sort((a, b) => {
-                if (a.priority !== b.priority) return b.priority - a.priority;
-                const aStart = a.startDate
-                    ? new Date(a.startDate).getTime()
-                    : Number.NEGATIVE_INFINITY;
-                const bStart = b.startDate
-                    ? new Date(b.startDate).getTime()
-                    : Number.NEGATIVE_INFINITY;
-                if (aStart !== bStart) return aStart - bStart;
-                return String(a.id).localeCompare(String(b.id));
-            });
-        }
+        // No intra-group ordering: PriceLists carry no priority of their
+        // own. When several candidates in the same group match the
+        // current `(variant, currency, quantity)`, the selection strategy
+        // decides among them (default: `CheapestWinsSelectionStrategy`).
 
         // Sort groups by priority ASC (lowest first — base before
         // promo in the cascade).

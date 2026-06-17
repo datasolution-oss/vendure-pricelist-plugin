@@ -33,7 +33,6 @@ export const CREATE_PRICE_LIST = gql`
             description
             valueType
             timezone
-            priority
             enabled
             originChannel {
                 id
@@ -63,7 +62,6 @@ export const UPDATE_PRICE_LIST = gql`
         updatePriceList(input: $input) {
             id
             code
-            priority
             enabled
             timezone
             name
@@ -98,7 +96,6 @@ export const PRICE_LIST = gql`
             name
             valueType
             timezone
-            priority
             enabled
             deletedAt
             purgeAt

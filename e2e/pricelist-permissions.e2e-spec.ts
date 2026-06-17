@@ -94,8 +94,7 @@ describe('Pricelist permissions', () => {
                     input: {
                         code: 'reader-attempt',
                         valueType: 'ABSOLUTE',
-                        priority: 1,
-                        translations: [{ languageCode: 'en', name: 'Reader attempt' }],
+                                                translations: [{ languageCode: 'en', name: 'Reader attempt' }],
                     },
                 }),
             ).rejects.toThrow(/authori[sz]ed|permission|forbidden/i);
@@ -124,8 +123,7 @@ describe('Pricelist permissions', () => {
                 input: {
                     code: 'editor-can-create',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
-                    translations: [{ languageCode: 'en', name: 'Editor created' }],
+                                        translations: [{ languageCode: 'en', name: 'Editor created' }],
                 },
             });
             const newListId = String(created.createPriceList.id);
@@ -147,8 +145,7 @@ describe('Pricelist permissions', () => {
             input: {
                 code: 'access-mgr-target',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Access manager target' }],
+                                translations: [{ languageCode: 'en', name: 'Access manager target' }],
             },
         });
         const targetListId = String(ownerRes.createPriceList.id);
@@ -174,8 +171,7 @@ describe('Pricelist permissions', () => {
                     input: {
                         code: 'access-mgr-attempt',
                         valueType: 'ABSOLUTE',
-                        priority: 1,
-                        translations: [{ languageCode: 'en', name: 'Access mgr attempt' }],
+                                                translations: [{ languageCode: 'en', name: 'Access mgr attempt' }],
                     },
                 }),
             ).rejects.toThrow(/authori[sz]ed|permission|forbidden/i);

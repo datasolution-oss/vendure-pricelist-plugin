@@ -82,9 +82,6 @@ export class PriceList
     @Column({ type: Date, nullable: true })
     endDate: Date | null;
 
-    @Column({ default: 0 })
-    priority: number;
-
     @Column({ default: true })
     enabled: boolean;
 

@@ -149,8 +149,7 @@ describe('OrderLine pricelist provenance (Stage 3 §2.4)', () => {
       input: {
         code: 'SINGLE_PROV',
         valueType: 'ABSOLUTE',
-        priority: 1,
-        translations: [{ languageCode: 'en', name: 'Single provenance' }]
+                translations: [{ languageCode: 'en', name: 'Single provenance' }]
       }
     });
     const listId = String(res.createPriceList.id);
@@ -204,8 +203,7 @@ describe('OrderLine pricelist provenance (Stage 3 §2.4)', () => {
       input: {
         code: 'CASCADE_BASE',
         valueType: 'ABSOLUTE',
-        priority: 1,
-        translations: [{ languageCode: 'en', name: 'Cascade base' }]
+                translations: [{ languageCode: 'en', name: 'Cascade base' }]
       }
     });
     const baseId = String(base.createPriceList.id);
@@ -226,8 +224,7 @@ describe('OrderLine pricelist provenance (Stage 3 §2.4)', () => {
       input: {
         code: 'CASCADE_PROMO',
         valueType: 'PERCENTAGE',
-        priority: 1,
-        groupId: promoGroupId,
+                groupId: promoGroupId,
         translations: [{ languageCode: 'en', name: 'Cascade promo' }]
       }
     });
@@ -271,8 +268,7 @@ describe('OrderLine pricelist provenance (Stage 3 §2.4)', () => {
       input: {
         code: 'TIERED_PROV',
         valueType: 'ABSOLUTE',
-        priority: 1,
-        translations: [{ languageCode: 'en', name: 'Tiered provenance' }]
+                translations: [{ languageCode: 'en', name: 'Tiered provenance' }]
       }
     });
     const listId = String(list.createPriceList.id);

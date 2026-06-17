@@ -148,8 +148,7 @@ describe('Strike-through Shop API (Stage 3 §2.3)', () => {
       input: {
         code: opts.code,
         valueType: 'ABSOLUTE',
-        priority: 1,
-        translations: [{ languageCode: 'en', name: opts.name }]
+                translations: [{ languageCode: 'en', name: opts.name }]
       }
     });
     const id = String(res.createPriceList.id);
@@ -236,8 +235,7 @@ describe('Strike-through Shop API (Stage 3 §2.3)', () => {
       input: {
         code: 'VIPSTRIKE',
         valueType: 'ABSOLUTE',
-        priority: 1,
-        translations: [{ languageCode: 'en', name: 'VIP Strike' }]
+                translations: [{ languageCode: 'en', name: 'VIP Strike' }]
       }
     });
     const listId = String(res.createPriceList.id);

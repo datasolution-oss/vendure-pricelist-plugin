@@ -106,8 +106,7 @@ describe('Pricing kill-switch', () => {
             input: {
                 code: 'would-discount-but-killed',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Killed' }],
+                                translations: [{ languageCode: 'en', name: 'Killed' }],
             },
         });
         const listId = String(res.createPriceList.id);

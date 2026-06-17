@@ -5,7 +5,7 @@ import { CrudPermissionDefinition, PermissionDefinition } from '@vendure/core';
  * UpdatePriceList, DeletePriceList.
  *
  * `UpdatePriceList` / `DeletePriceList` gate **content** mutations (code,
- * prices/items, validity window, valueType, priority). These are
+ * prices/items, validity window, valueType). These are
  * additionally origin-channel-guarded at the service layer: a user
  * holding `UpdatePriceList` on channel B can edit lists whose origin is
  * B, but NOT lists shared into B from elsewhere (PLAN-STAGE-1F §5).

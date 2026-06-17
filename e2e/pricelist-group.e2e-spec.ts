@@ -122,8 +122,7 @@ describe('PriceListGroup', () => {
             input: {
                 code: 'change-group-wrong-channel',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Wrong channel' }],
+                                translations: [{ languageCode: 'en', name: 'Wrong channel' }],
             },
         });
         const listId = String(listRes.createPriceList.id);
@@ -144,8 +143,7 @@ describe('PriceListGroup', () => {
             input: {
                 code: 'change-group-not-shared',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Not shared' }],
+                                translations: [{ languageCode: 'en', name: 'Not shared' }],
             },
         });
         const listId = String(listRes.createPriceList.id);
@@ -178,8 +176,7 @@ describe('PriceListGroup', () => {
             input: {
                 code: 'group-move-list',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Group move list' }],
+                                translations: [{ languageCode: 'en', name: 'Group move list' }],
             },
         });
         const listId = String(listRes.createPriceList.id);
@@ -294,8 +291,7 @@ describe('PriceListGroup', () => {
                 input: {
                     code: `page-list-${i}`,
                     valueType: 'ABSOLUTE',
-                    priority: 1,
-                    translations: [{ languageCode: 'en', name: `Page ${i}` }],
+                                        translations: [{ languageCode: 'en', name: `Page ${i}` }],
                 },
             });
             const lid = String(r.createPriceList.id);

@@ -9,7 +9,9 @@ import {
 /**
  * Orchestrates the cascade: pre-process the resolved groups, try a
  * caller-defined external short-circuit, then run the default
- * cascade through every group in `priority ASC` order.
+ * cascade — see `DefaultPriceListPriceCalculationStrategy` for the
+ * exact iteration order (highest-priority group first, stop on
+ * ABSOLUTE).
  *
  * Exposed as a strategy because the two hooks (`preProcessGroups`,
  * `tryExternalPrice`) are real enterprise requirements:

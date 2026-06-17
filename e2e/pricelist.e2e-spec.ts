@@ -64,7 +64,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'crud-absolute',
                     valueType: 'ABSOLUTE',
-                    priority: 10,
                     translations: [{ languageCode: 'en', name: 'CRUD Absolute', description: '' }],
                 },
             });
@@ -74,7 +73,6 @@ describe('PriceList entity', () => {
             expect(createPriceList.valueType).toBe('ABSOLUTE');
             expect(createPriceList.timezone).toBe('UTC');
             expect(createPriceList.enabled).toBe(true);
-            expect(createPriceList.priority).toBe(10);
             expect(createPriceList.name).toBe('CRUD Absolute');
             expect(createPriceList.originChannel.id).toBe(f.channelA.id);
             expect(createPriceList.channels.map((c: any) => c.id)).toEqual([f.channelA.id]);
@@ -88,7 +86,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'crud-percentage',
                     valueType: 'PERCENTAGE',
-                    priority: 5,
                     translations: [{ languageCode: 'en', name: 'CRUD Percentage' }],
                 },
             });
@@ -101,18 +98,16 @@ describe('PriceList entity', () => {
             expect(priceList.code).toBe('crud-absolute');
         });
 
-        it('updates priority, enabled, code and translations', async () => {
+        it('updates enabled, code and translations', async () => {
             const { updatePriceList } = await adminClient.query<any>(UPDATE_PRICE_LIST, {
                 input: {
                     id: absoluteListId,
                     code: 'crud-absolute-renamed',
-                    priority: 99,
                     enabled: false,
                     translations: [{ languageCode: 'en', name: 'Renamed', description: 'updated' }],
                 },
             });
             expect(updatePriceList.code).toBe('crud-absolute-renamed');
-            expect(updatePriceList.priority).toBe(99);
             expect(updatePriceList.enabled).toBe(false);
             expect(updatePriceList.name).toBe('Renamed');
             expect(updatePriceList.description).toBe('updated');
@@ -131,7 +126,6 @@ describe('PriceList entity', () => {
                     input: {
                         code: `paginated-${i}`,
                         valueType: 'ABSOLUTE',
-                        priority: 1,
                         translations: [{ languageCode: 'en', name: `Paginated ${i}` }],
                     },
                 });
@@ -158,7 +152,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'i18n-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [
                         { languageCode: 'en', name: 'English Name', description: 'EN desc' },
                         { languageCode: 'fr', name: 'Nom Français', description: 'FR desc' },
@@ -186,7 +179,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'i18n-update',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [
                         { languageCode: 'en', name: 'EN Original' },
                         { languageCode: 'fr', name: 'FR Original' },
@@ -236,7 +228,6 @@ describe('PriceList entity', () => {
                     input: {
                         code: 'foreign-group-create',
                         valueType: 'ABSOLUTE',
-                        priority: 1,
                         groupId: foreignGroupId,
                         translations: [{ languageCode: 'en', name: 'Foreign group' }],
                     },
@@ -256,7 +247,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'share-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: 'Share list' }],
                 },
             });
@@ -319,7 +309,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'foreign-group-assign',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: 'Foreign group assign' }],
                 },
             });
@@ -372,7 +361,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'three-channel-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: '3-channel list' }],
                 },
             });
@@ -402,7 +390,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'a-only-visibility',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: 'A only visibility' }],
                 },
             });
@@ -429,7 +416,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'soft-delete-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: 'Soft delete' }],
                 },
             });
@@ -472,7 +458,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'soft-delete-items',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: 'Soft delete items' }],
                 },
             });
@@ -496,7 +481,7 @@ describe('PriceList entity', () => {
             // IS NULL filter).
             await expect(
                 adminClient.query<any>(UPDATE_PRICE_LIST, {
-                    input: { id: downstreamId, priority: 1 },
+                    input: { id: downstreamId, enabled: false },
                 }),
             ).rejects.toThrow(/not found/i);
 
@@ -516,7 +501,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'restore-idempotent',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: 'Restore idempotent' }],
                 },
             });
@@ -534,7 +518,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'restore-guard-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: 'Restore guard' }],
                 },
             });
@@ -569,7 +552,6 @@ describe('PriceList entity', () => {
                 input: {
                     code: 'origin-guard-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
                     translations: [{ languageCode: 'en', name: 'Origin guard' }],
                 },
             });
@@ -587,7 +569,7 @@ describe('PriceList entity', () => {
             adminClient.setChannelToken(f.channelB.token);
             await expect(
                 adminClient.query<any>(UPDATE_PRICE_LIST, {
-                    input: { id: listId, priority: 42 },
+                    input: { id: listId, enabled: false },
                 }),
             ).rejects.toThrow(/PRICELIST_READONLY_NON_ORIGIN_CHANNEL/);
         });
@@ -630,9 +612,9 @@ describe('PriceList entity', () => {
         it('the same updatePriceList succeeds from the origin channel', async () => {
             adminClient.setChannelToken(f.channelA.token);
             const res = await adminClient.query<any>(UPDATE_PRICE_LIST, {
-                input: { id: listId, priority: 42 },
+                input: { id: listId, enabled: false },
             });
-            expect(res.updatePriceList.priority).toBe(42);
+            expect(res.updatePriceList.enabled).toBe(false);
         });
     });
 });

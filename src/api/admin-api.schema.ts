@@ -21,7 +21,6 @@ export const adminApiExtensions = gql`
         timezone: String!
         startDate: DateTime
         endDate: DateTime
-        priority: Int!
         enabled: Boolean!
         originChannel: Channel!
         channels: [Channel!]!
@@ -379,7 +378,6 @@ export const adminApiExtensions = gql`
         timezone: String
         startDate: DateTime
         endDate: DateTime
-        priority: Int!
         enabled: Boolean
         groupId: ID
         translations: [PriceListTranslationInput!]!    }
@@ -395,7 +393,6 @@ export const adminApiExtensions = gql`
         timezone: String
         startDate: DateTime
         endDate: DateTime
-        priority: Int
         enabled: Boolean
         translations: [PriceListTranslationInput!]    }
 

@@ -10,8 +10,11 @@ import { PriceListValueType } from '../entities/price-list-item.entity';
  * `PriceListResolutionStrategy`: the `PriceListGroup` itself plus
  * every `PriceList` in it that passed the validity + access filters.
  *
- * `candidates` is sorted by `PriceList.priority DESC` (highest first)
- * so the `PriceListSelectionStrategy` can iterate without re-sorting.
+ * `candidates` is unordered — `PriceList` carries no priority of its
+ * own. When several candidates match the current
+ * `(variant, currency, quantity)`, the `PriceListSelectionStrategy`
+ * decides among them (default: `CheapestWinsSelectionStrategy`).
+ *
  * The list of groups returned by `resolve()` is sorted by
  * `group.priority ASC` (lowest first) — that's the cascade order:
  * base prices apply first, promos compound on top.

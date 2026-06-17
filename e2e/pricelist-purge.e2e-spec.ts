@@ -75,8 +75,7 @@ describe('purgePendingDeletionTask', () => {
             input: {
                 code: 'purge-target',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Purge target' }],
+                                translations: [{ languageCode: 'en', name: 'Purge target' }],
             },
         });
         const listId = String(res.createPriceList.id);

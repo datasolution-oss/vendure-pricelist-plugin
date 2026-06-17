@@ -92,7 +92,6 @@ export function PriceListDetailPage() {
 
     // Editable form draft, hydrated from the loaded entity.
     const [code, setCode] = useState('');
-    const [priority, setPriority] = useState(0);
     const [enabled, setEnabled] = useState(true);
     const [startDate, setStartDate] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
@@ -102,7 +101,6 @@ export function PriceListDetailPage() {
     useEffect(() => {
         if (!pl) return;
         setCode(pl.code);
-        setPriority(pl.priority);
         setEnabled(pl.enabled);
         setStartDate(pl.startDate ? pl.startDate.slice(0, 16) : '');
         setEndDate(pl.endDate ? pl.endDate.slice(0, 16) : '');
@@ -120,7 +118,6 @@ export function PriceListDetailPage() {
                 input: {
                     id: pl!.id,
                     code,
-                    priority,
                     enabled,
                     startDate: startDate ? new Date(startDate).toISOString() : null,
                     endDate: endDate ? new Date(endDate).toISOString() : null,
@@ -326,16 +323,6 @@ export function PriceListDetailPage() {
                                     {t`Locked once created.`}
                                 </span>
                             </div>
-                        </FormRow>
-                        <FormRow label={t`Priority`}>
-                            <Input
-                                type="number"
-                                value={priority}
-                                onChange={e =>
-                                    setPriority(parseInt(e.target.value, 10) || 0)
-                                }
-                                disabled={!isEditable}
-                            />
                         </FormRow>
                         <FormRow label={t`Enabled`}>
                             <Switch

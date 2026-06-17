@@ -60,7 +60,7 @@ export interface PluginInitOptions {
 
     /**
      * Selection strategy: picks one `PriceListItem` per group during the
-     * cascade. Defaults to `HighestPriorityWinsSelectionStrategy`.
+     * cascade. Defaults to `CheapestWinsSelectionStrategy`.
      */
     selectionStrategy?: PriceListSelectionStrategy;
 

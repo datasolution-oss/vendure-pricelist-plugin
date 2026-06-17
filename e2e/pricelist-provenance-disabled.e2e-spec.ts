@@ -130,8 +130,7 @@ describe('OrderLine pricelist provenance — recordOrderLineProvenance: false', 
       input: {
         code: 'PROV_OFF',
         valueType: 'ABSOLUTE',
-        priority: 1,
-        translations: [{ languageCode: 'en', name: 'Provenance disabled' }]
+                translations: [{ languageCode: 'en', name: 'Provenance disabled' }]
       }
     });
     const listId = String(res.createPriceList.id);

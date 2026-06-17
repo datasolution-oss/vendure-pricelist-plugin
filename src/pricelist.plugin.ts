@@ -2,10 +2,10 @@ import { LanguageCode, PluginCommonModule, Type, VendurePlugin } from '@vendure/
 
 import { adminApiExtensions, ALL_RESOLVERS, ALL_SHOP_RESOLVERS, shopApiExtensions } from './api';
 import {
+  CheapestWinsSelectionStrategy,
   DefaultPriceListPriceCalculationStrategy,
   DefaultPriceListResolutionStrategy,
-  HalfUpToMinorUnitRoundingStrategy,
-  HighestPriorityWinsSelectionStrategy
+  HalfUpToMinorUnitRoundingStrategy
 } from './config/defaults';
 import { PRICELIST_PLUGIN_OPTIONS } from './constants';
 import { DEFAULT_PRICE_LIST_GROUP_FIELD } from './custom-fields';
@@ -58,7 +58,7 @@ function withDefaults(options: PluginInitOptions): PluginInitOptions {
     purgePendingDeletionSchedule: options.purgePendingDeletionSchedule,
     purgePendingDeletionBatchSize: options.purgePendingDeletionBatchSize ?? DEFAULT_PURGE_BATCH_SIZE,
     resolutionStrategy: options.resolutionStrategy ?? new DefaultPriceListResolutionStrategy(),
-    selectionStrategy: options.selectionStrategy ?? new HighestPriorityWinsSelectionStrategy(),
+    selectionStrategy: options.selectionStrategy ?? new CheapestWinsSelectionStrategy(),
     calculationStrategy: options.calculationStrategy ?? new DefaultPriceListPriceCalculationStrategy(),
     roundingStrategy: options.roundingStrategy ?? new HalfUpToMinorUnitRoundingStrategy(),
     additionalValidityPredicates: options.additionalValidityPredicates ?? [],

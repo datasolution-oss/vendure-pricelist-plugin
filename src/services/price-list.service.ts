@@ -52,7 +52,6 @@ export interface CreatePriceListInput {
     timezone?: string;
     startDate?: Date | null;
     endDate?: Date | null;
-    priority: number;
     enabled?: boolean;
     groupId?: ID;
     translations: PriceListTranslationInput[];
@@ -68,7 +67,6 @@ export interface UpdatePriceListInput {
     timezone?: string;
     startDate?: Date | null;
     endDate?: Date | null;
-    priority?: number;
     enabled?: boolean;
     translations?: PriceListTranslationInput[];
 }
@@ -198,7 +196,6 @@ export class PriceListService {
                 pl.timezone = input.timezone ?? 'UTC';
                 pl.startDate = input.startDate ?? null;
                 pl.endDate = input.endDate ?? null;
-                pl.priority = input.priority;
                 pl.enabled = input.enabled ?? true;
                 pl.originChannelId = ctx.channelId;
                 pl.channels = [activeChannel];
@@ -224,7 +221,6 @@ export class PriceListService {
 
         if (input.code !== undefined) list.code = input.code;
         if (input.timezone !== undefined) list.timezone = input.timezone;
-        if (input.priority !== undefined) list.priority = input.priority;
         if (input.enabled !== undefined) list.enabled = input.enabled;
         if (input.startDate !== undefined) list.startDate = input.startDate;
         if (input.endDate !== undefined) list.endDate = input.endDate;

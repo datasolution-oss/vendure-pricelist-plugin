@@ -97,8 +97,7 @@ describe('Strike-through Shop API — exposeBadgeOnShopApi: false', () => {
       input: {
         code: 'WINTER',
         valueType: 'ABSOLUTE',
-        priority: 1,
-        translations: [{ languageCode: 'en', name: 'Soldes Hiver' }]
+                translations: [{ languageCode: 'en', name: 'Soldes Hiver' }]
       }
     });
     const listId = String(res.createPriceList.id);

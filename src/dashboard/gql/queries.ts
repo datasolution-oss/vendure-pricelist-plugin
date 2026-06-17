@@ -8,7 +8,6 @@ export const priceListsListQuery = graphql(/* GraphQL */ `
         code
         name
         valueType
-        priority
         enabled
         startDate
         endDate
@@ -45,7 +44,6 @@ export const priceListDetailQuery = graphql(/* GraphQL */ `
       description
       valueType
       timezone
-      priority
       enabled
       startDate
       endDate

@@ -64,7 +64,6 @@ export function PriceListListPage({ route }: Readonly<PriceListListPageProps>) {
         valueType: true,
         enabled: true,
         originChannel: true,
-        priority: false,
         startDate: false,
         endDate: false,
         channels: false,
@@ -87,9 +86,6 @@ export function PriceListListPage({ route }: Readonly<PriceListListPageProps>) {
                 {row.original.valueType === 'PERCENTAGE' ? t`Percentage` : t`Absolute`}
               </Badge>
             )
-          },
-          priority: {
-            header: t`Priority`
           },
           enabled: {
             header: t`Status`,
