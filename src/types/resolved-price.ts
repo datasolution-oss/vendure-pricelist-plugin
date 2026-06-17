@@ -52,6 +52,17 @@ export interface ResolvedPriceProvenanceEntry {
 }
 
 /**
+ * Last-applied (highest-priority) contributing pricelist — the "winning"
+ * marker surfaced as a strike-through badge on the storefront. `listId`
+ * lets consumers fetch the translated `PriceList.name` label without
+ * exposing the raw id on the public API.
+ */
+export interface PricelistBadge {
+    code: string;
+    listId: ID;
+}
+
+/**
  * `source` distinguishes a cascade-produced price from one returned
  * by `PriceListPriceCalculationStrategy.tryExternalPrice()` — useful
  * for telemetry and for Stage 3 to decide whether to expose

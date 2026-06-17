@@ -2,21 +2,21 @@ import { LanguageCode, PluginCommonModule, Type, VendurePlugin } from '@vendure/
 
 import { adminApiExtensions, ALL_RESOLVERS, ALL_SHOP_RESOLVERS, shopApiExtensions } from './api';
 import {
-    DefaultPriceListPriceCalculationStrategy,
-    DefaultPriceListResolutionStrategy,
-    HalfUpToMinorUnitRoundingStrategy,
-    HighestPriorityWinsSelectionStrategy,
+  DefaultPriceListPriceCalculationStrategy,
+  DefaultPriceListResolutionStrategy,
+  HalfUpToMinorUnitRoundingStrategy,
+  HighestPriorityWinsSelectionStrategy
 } from './config/defaults';
 import { PRICELIST_PLUGIN_OPTIONS } from './constants';
 import { DEFAULT_PRICE_LIST_GROUP_FIELD } from './custom-fields';
 import { ALL_ENTITIES } from './entities';
 import { PriceListGroup } from './entities/price-list-group.entity';
 import {
-    assignPriceListGroupPermission,
-    managePriceListAccessPermission,
-    priceListGroupPermission,
-    priceListPermission,
-    sharePriceListPermission,
+  assignPriceListGroupPermission,
+  managePriceListAccessPermission,
+  priceListGroupPermission,
+  priceListPermission,
+  sharePriceListPermission
 } from './permissions';
 import { purgePendingDeletionTask } from './scheduled-tasks/purge-pending-deletion-task';
 import { ALL_SERVICES } from './services';
@@ -36,16 +36,16 @@ const DEFAULT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour safety cap for Layer A
  * checks the map against both `ctx.channelId` and `ctx.channel.code`.
  */
 function parseKillSwitchEnv(): Record<string, boolean> {
-    const raw = process.env.PRICELIST_KILL_CHANNELS;
-    if (!raw) return {};
-    return raw
-        .split(',')
-        .map(s => s.trim())
-        .filter(s => s.length > 0)
-        .reduce<Record<string, boolean>>((acc, code) => {
-            acc[code] = true;
-            return acc;
-        }, {});
+  const raw = process.env.PRICELIST_KILL_CHANNELS;
+  if (!raw) return {};
+  return raw
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .reduce<Record<string, boolean>>((acc, code) => {
+      acc[code] = true;
+      return acc;
+    }, {});
 }
 
 /**
@@ -53,161 +53,147 @@ function parseKillSwitchEnv(): Record<string, boolean> {
  * constructed once per `init()` call (which runs at most once per process).
  */
 function withDefaults(options: PluginInitOptions): PluginInitOptions {
-    return {
-        purgePendingDeletionAfterMs:
-            options.purgePendingDeletionAfterMs ?? DEFAULT_PURGE_AFTER_MS,
-        purgePendingDeletionSchedule: options.purgePendingDeletionSchedule,
-        purgePendingDeletionBatchSize:
-            options.purgePendingDeletionBatchSize ?? DEFAULT_PURGE_BATCH_SIZE,
-        resolutionStrategy:
-            options.resolutionStrategy ?? new DefaultPriceListResolutionStrategy(),
-        selectionStrategy:
-            options.selectionStrategy ?? new HighestPriorityWinsSelectionStrategy(),
-        calculationStrategy:
-            options.calculationStrategy ??
-            new DefaultPriceListPriceCalculationStrategy(),
-        roundingStrategy:
-            options.roundingStrategy ?? new HalfUpToMinorUnitRoundingStrategy(),
-        additionalValidityPredicates: options.additionalValidityPredicates ?? [],
-        killSwitchPerChannel: {
-            ...parseKillSwitchEnv(),
-            ...(options.killSwitchPerChannel ?? {}),
-        },
-        defaultCacheTtlMs: options.defaultCacheTtlMs ?? DEFAULT_CACHE_TTL_MS,
-        exposeBadgeOnShopApi: options.exposeBadgeOnShopApi ?? true,
-    };
+  return {
+    purgePendingDeletionAfterMs: options.purgePendingDeletionAfterMs ?? DEFAULT_PURGE_AFTER_MS,
+    purgePendingDeletionSchedule: options.purgePendingDeletionSchedule,
+    purgePendingDeletionBatchSize: options.purgePendingDeletionBatchSize ?? DEFAULT_PURGE_BATCH_SIZE,
+    resolutionStrategy: options.resolutionStrategy ?? new DefaultPriceListResolutionStrategy(),
+    selectionStrategy: options.selectionStrategy ?? new HighestPriorityWinsSelectionStrategy(),
+    calculationStrategy: options.calculationStrategy ?? new DefaultPriceListPriceCalculationStrategy(),
+    roundingStrategy: options.roundingStrategy ?? new HalfUpToMinorUnitRoundingStrategy(),
+    additionalValidityPredicates: options.additionalValidityPredicates ?? [],
+    killSwitchPerChannel: {
+      ...parseKillSwitchEnv(),
+      ...(options.killSwitchPerChannel ?? {})
+    },
+    defaultCacheTtlMs: options.defaultCacheTtlMs ?? DEFAULT_CACHE_TTL_MS,
+    exposeBadgeOnShopApi: options.exposeBadgeOnShopApi ?? true
+  };
 }
 
 @VendurePlugin({
-    imports: [PluginCommonModule],
-    providers: [
-        ...ALL_SERVICES,
-        OrderLineProvenanceSubscriber,
-        { provide: PRICELIST_PLUGIN_OPTIONS, useFactory: () => PricelistPlugin.options },
-    ],
-    entities: ALL_ENTITIES,
-    adminApiExtensions: {
-        schema: adminApiExtensions,
-        resolvers: ALL_RESOLVERS,
-    },
-    shopApiExtensions: {
-        schema: shopApiExtensions,
-        resolvers: ALL_SHOP_RESOLVERS,
-    },
-    configuration: config => {
-        // Normalise options with defaults even when the plugin was added
-        // without `.init()` (bare `PricelistPlugin`). The pricing strategies
-        // below are registered unconditionally and call the resolution
-        // strategy, so the strategy slots MUST be populated or every variant
-        // price calc would crash. `withDefaults` is idempotent (the `??`
-        // keeps any already-provided strategy instances).
-        PricelistPlugin.options = withDefaults(PricelistPlugin.options);
+  imports: [PluginCommonModule],
+  providers: [
+    ...ALL_SERVICES,
+    OrderLineProvenanceSubscriber,
+    { provide: PRICELIST_PLUGIN_OPTIONS, useFactory: () => PricelistPlugin.options }
+  ],
+  entities: ALL_ENTITIES,
+  adminApiExtensions: {
+    schema: adminApiExtensions,
+    resolvers: ALL_RESOLVERS
+  },
+  shopApiExtensions: {
+    schema: shopApiExtensions,
+    resolvers: ALL_SHOP_RESOLVERS
+  },
+  configuration: config => {
+    // Normalise options with defaults even when the plugin was added
+    // without `.init()` (bare `PricelistPlugin`). The pricing strategies
+    // below are registered unconditionally and call the resolution
+    // strategy, so the strategy slots MUST be populated or every variant
+    // price calc would crash. `withDefaults` is idempotent (the `??`
+    // keeps any already-provided strategy instances).
+    PricelistPlugin.options = withDefaults(PricelistPlugin.options);
 
-        config.authOptions.customPermissions.push(
-            priceListPermission,
-            priceListGroupPermission,
-            sharePriceListPermission,
-            assignPriceListGroupPermission,
-            managePriceListAccessPermission,
-        );
+    config.authOptions.customPermissions.push(
+      priceListPermission,
+      priceListGroupPermission,
+      sharePriceListPermission,
+      assignPriceListGroupPermission,
+      managePriceListAccessPermission
+    );
 
-        // Stage 3 — hook the variant price calculation so resolved
-        // pricelist prices flow into Vendure's catalog/shop pricing.
-        // Single-strategy slot: our subclass extends the default, so the
-        // no-pricelist path is unchanged. Last plugin to set this wins —
-        // mind load order if another plugin also overrides it.
-        config.catalogOptions.productVariantPriceCalculationStrategy =
-            new PricelistVariantPriceCalculationStrategy();
+    // Stage 3 — hook the variant price calculation so resolved
+    // pricelist prices flow into Vendure's catalog/shop pricing.
+    // The inner strategy extends Vendure's default (no-pricelist
+    // path is byte-for-byte unchanged); the caching decorator adds
+    // the §2.3 strike-through side effect (per-request cache of the
+    // original price + winning badge). Last plugin to set this wins
+    // — mind load order if another plugin also overrides it.
+    ((config.catalogOptions.productVariantPriceCalculationStrategy = new PricelistVariantPriceCalculationStrategy()),
+      // Order-line price resolution with the line quantity, so
+      // stepQuantity tiers apply on the cart/order (the catalog hook
+      // above only resolves at qty 1). Reverses PLAN-STAGE-3 §Q2.
+      (config.orderOptions.orderItemPriceCalculationStrategy = new PricelistOrderItemPriceCalculationStrategy()));
 
-        // Order-line price resolution with the line quantity, so
-        // stepQuantity tiers apply on the cart/order (the catalog hook
-        // above only resolves at qty 1). Reverses PLAN-STAGE-3 §Q2.
-        config.orderOptions.orderItemPriceCalculationStrategy =
-            new PricelistOrderItemPriceCalculationStrategy();
+    // Stage 3 §2.4 — denormalised pricelist provenance snapshot on the
+    // order line (support/forensics). Written by
+    // OrderLineProvenanceSubscriber on line creation. Internal + readonly
+    // JSON text; never queried by id.
+    config.customFields.OrderLine.push({
+      name: 'pricelistProvenance',
+      type: 'text',
+      nullable: true,
+      public: false,
+      readonly: true,
+      internal: true
+    });
 
-        // Stage 3 §2.4 — denormalised pricelist provenance snapshot on the
-        // order line (support/forensics). Written by
-        // OrderLineProvenanceSubscriber on line creation. Internal + readonly
-        // JSON text; never queried by id.
-        config.customFields.OrderLine.push({
-            name: 'pricelistProvenance',
-            type: 'text',
-            nullable: true,
-            public: false,
-            readonly: true,
-            internal: true,
-        });
-
-        // Channel-side default PriceListGroup (replaces the former
-        // `PriceListChannelDefaultGroup` entity). A relation custom field on
-        // `Channel` — mirrors `Channel.defaultTaxZone` — so "one default per
-        // channel" is structural (the FK lives on the channel row) and the
-        // value is exposed for free as `Channel.customFields.defaultPriceListGroup`.
-        // `eager: false`: callers load it explicitly via
-        // `relations: ['customFields.defaultPriceListGroup']`.
-        config.customFields.Channel.push({
-            name: DEFAULT_PRICE_LIST_GROUP_FIELD,
-            type: 'relation',
-            entity: PriceListGroup,
-            graphQLType: 'PriceListGroup',
-            list: false,
-            nullable: true,
-            eager: false,
-            public: false,
-            label: [
-                { languageCode: LanguageCode.en, value: 'Default price list group' },
-            ],
-            description: [
-                {
-                    languageCode: LanguageCode.en,
-                    value:
-                        "The channel's default price list group. A new price list " +
-                        'created on this channel with no explicit group lands here.',
-                },
-            ],
-        });
-
-        // Stage 1E: register the purge-pending-deletion cron task.
-        //
-        // Schedule semantics:
-        //   - `null` → disable the task entirely (don't push it)
-        //   - undefined → keep the task's built-in default schedule
-        //     (every 15 minutes)
-        //   - any other value → override the schedule
-        //
-        // Params are always overridden so the plugin's options govern
-        // the grace period and batch size at runtime — re-configurable
-        // without rebuilding the plugin.
-        const scheduleOpt = PricelistPlugin.options.purgePendingDeletionSchedule;
-        if (scheduleOpt !== null) {
-            const task =
-                scheduleOpt === undefined
-                    ? purgePendingDeletionTask
-                    : purgePendingDeletionTask.configure({ schedule: scheduleOpt });
-            config.schedulerOptions.tasks.push(
-                task.configure({
-                    params: {
-                        olderThanMs:
-                            PricelistPlugin.options.purgePendingDeletionAfterMs ??
-                            DEFAULT_PURGE_AFTER_MS,
-                        batchSize:
-                            PricelistPlugin.options.purgePendingDeletionBatchSize ??
-                            DEFAULT_PURGE_BATCH_SIZE,
-                    },
-                }),
-            );
+    // Channel-side default PriceListGroup (replaces the former
+    // `PriceListChannelDefaultGroup` entity). A relation custom field on
+    // `Channel` — mirrors `Channel.defaultTaxZone` — so "one default per
+    // channel" is structural (the FK lives on the channel row) and the
+    // value is exposed for free as `Channel.customFields.defaultPriceListGroup`.
+    // `eager: false`: callers load it explicitly via
+    // `relations: ['customFields.defaultPriceListGroup']`.
+    config.customFields.Channel.push({
+      name: DEFAULT_PRICE_LIST_GROUP_FIELD,
+      type: 'relation',
+      entity: PriceListGroup,
+      graphQLType: 'PriceListGroup',
+      list: false,
+      nullable: true,
+      eager: false,
+      public: false,
+      label: [{ languageCode: LanguageCode.en, value: 'Default price list group' }],
+      description: [
+        {
+          languageCode: LanguageCode.en,
+          value:
+            "The channel's default price list group. A new price list " +
+            'created on this channel with no explicit group lands here.'
         }
+      ]
+    });
 
-        return config;
-    },
-    dashboard: './dashboard/index.tsx',
-    compatibility: '^3.6.0',
+    // Stage 1E: register the purge-pending-deletion cron task.
+    //
+    // Schedule semantics:
+    //   - `null` → disable the task entirely (don't push it)
+    //   - undefined → keep the task's built-in default schedule
+    //     (every 15 minutes)
+    //   - any other value → override the schedule
+    //
+    // Params are always overridden so the plugin's options govern
+    // the grace period and batch size at runtime — re-configurable
+    // without rebuilding the plugin.
+    const scheduleOpt = PricelistPlugin.options.purgePendingDeletionSchedule;
+    if (scheduleOpt !== null) {
+      const task =
+        scheduleOpt === undefined
+          ? purgePendingDeletionTask
+          : purgePendingDeletionTask.configure({ schedule: scheduleOpt });
+      config.schedulerOptions.tasks.push(
+        task.configure({
+          params: {
+            olderThanMs: PricelistPlugin.options.purgePendingDeletionAfterMs ?? DEFAULT_PURGE_AFTER_MS,
+            batchSize: PricelistPlugin.options.purgePendingDeletionBatchSize ?? DEFAULT_PURGE_BATCH_SIZE
+          }
+        })
+      );
+    }
+
+    return config;
+  },
+  dashboard: './dashboard/index.tsx',
+  compatibility: '^3.6.0'
 })
 export class PricelistPlugin {
-    static options: PluginInitOptions = {};
+  static options: PluginInitOptions = {};
 
-    static init(options: PluginInitOptions = {}): Type<PricelistPlugin> {
-        this.options = withDefaults(options);
-        return PricelistPlugin;
-    }
+  static init(options: PluginInitOptions = {}): Type<PricelistPlugin> {
+    this.options = withDefaults(options);
+    return PricelistPlugin;
+  }
 }

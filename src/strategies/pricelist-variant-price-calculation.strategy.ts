@@ -1,12 +1,12 @@
 import { Injector, RequestContextCacheService } from '@vendure/core';
+import { PriceCalculationResult } from '@vendure/core/dist/common/types/common-types';
 import { DefaultProductVariantPriceCalculationStrategy } from '@vendure/core/dist/config/catalog/default-product-variant-price-calculation-strategy';
 import { ProductVariantPriceCalculationArgs } from '@vendure/core/dist/config/catalog/product-variant-price-calculation-strategy';
-import { PriceCalculationResult } from '@vendure/core/dist/common/types/common-types';
 
 import { PriceListLookupService } from '../services/price-list-lookup.service';
-import { ResolvedPriceProvenanceEntry } from '../types/resolved-price';
+import { PricelistBadge, ResolvedPriceProvenanceEntry } from '../types/resolved-price';
 
-import { pricelistOriginalCacheKey } from './pricelist-original-cache';
+import { PricelistOriginalCacheEntry, pricelistOriginalCacheKey } from './pricelist-original-cache';
 
 /**
  * Stage 3 — the single integration seam between the Stage 2 lookup
@@ -31,58 +31,49 @@ import { pricelistOriginalCacheKey } from './pricelist-original-cache';
  * strategy — no special-casing needed (PLAN-STAGE-3 §Q3).
  */
 export class PricelistVariantPriceCalculationStrategy extends DefaultProductVariantPriceCalculationStrategy {
-    private lookup!: PriceListLookupService;
-    private requestCache!: RequestContextCacheService;
+  private lookup!: PriceListLookupService;
+  private requestCache!: RequestContextCacheService;
 
-    init(injector: Injector): void {
-        super.init(injector); // hydrates the inherited TaxRateService
-        this.lookup = injector.get(PriceListLookupService);
-        this.requestCache = injector.get(RequestContextCacheService);
+  init(injector: Injector): void {
+    super.init(injector); // hydrates the inherited TaxRateService
+    this.lookup = injector.get(PriceListLookupService);
+    this.requestCache = injector.get(RequestContextCacheService);
+  }
+
+  async calculate(args: ProductVariantPriceCalculationArgs): Promise<PriceCalculationResult> {
+    const resolved = await this.lookup.resolvePrice(args.ctx, args.productVariant, args.ctx.currencyCode);
+
+    if (!resolved) {
+      return super.calculate(args);
     }
 
-    async calculate(
-        args: ProductVariantPriceCalculationArgs,
-    ): Promise<PriceCalculationResult> {
-        const resolved = await this.lookup.resolvePrice(
-            args.ctx,
-            args.productVariant,
-            args.ctx.currencyCode,
-        );
+    // Compute both prices for strike-through support. The double
+    // `super` call only fires on the pricelist-applies path; the
+    // no-pricelist path keeps the single-call cost of the default.
+    const originalResult = await super.calculate(args);
+    const adjustedResult = await super.calculate({
+      ...args,
+      inputPrice: resolved.value
+    });
 
-        if (!resolved) {
-            return super.calculate(args);
-        }
+    // Side effect to bypass the fact that PriceCalculationResult is a closed type.
+    // Maybe make a pull request to vendure core to be able to pass additionnal data to this type ?
+    const entry: PricelistOriginalCacheEntry = {
+      originalPrice: originalResult.price,
+      originalPriceIncludesTax: originalResult.priceIncludesTax,
+      badge: this.badgeFromProvenance(resolved.provenance)
+    };
+    this.requestCache.set(args.ctx, pricelistOriginalCacheKey(args.productVariant.id, args.ctx.currencyCode), entry);
 
-        // Compute both prices for strike-through support. The double
-        // `super` call only fires on the pricelist-applies path; the
-        // no-pricelist path keeps the single-call cost of the default.
-        const originalResult = await super.calculate(args);
-        const adjustedResult = await super.calculate({
-            ...args,
-            inputPrice: resolved.value,
-        });
+    return adjustedResult;
+  }
 
-        this.requestCache.set(
-            args.ctx,
-            pricelistOriginalCacheKey(args.productVariant.id, args.ctx.currencyCode),
-            {
-                originalPrice: originalResult.price,
-                priceIncludesTax: originalResult.priceIncludesTax,
-                badge: this.badgeFromProvenance(resolved.provenance),
-            },
-        );
-
-        return adjustedResult;
-    }
-
-    private badgeFromProvenance(
-        provenance: ResolvedPriceProvenanceEntry[],
-    ): { code: string; listId: import('@vendure/common/lib/shared-types').ID } | null {
-        // The badge is the last-applied (highest-priority) entry — the
-        // "last word" in the cascade, the most consumer-facing one. The
-        // resolver turns `listId` into the translated PriceList.name label.
-        if (provenance.length === 0) return null;
-        const last = provenance[provenance.length - 1];
-        return { code: last.listCode, listId: last.listId };
-    }
+  private badgeFromProvenance(provenance: ResolvedPriceProvenanceEntry[]): PricelistBadge | null {
+    // The badge is the last-applied (highest-priority) entry — the
+    // "last word" in the cascade, the most consumer-facing one. The
+    // resolver turns `listId` into the translated PriceList.name label.
+    if (provenance.length === 0) return null;
+    const last = provenance[provenance.length - 1];
+    return { code: last.listCode, listId: last.listId };
+  }
 }
