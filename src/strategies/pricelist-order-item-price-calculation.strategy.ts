@@ -24,41 +24,34 @@ import { PriceListLookupService } from '../services/price-list-lookup.service';
  * which PLAN-STAGE-3 §Q2 had decided to leave untouched. Reversed because
  * tiers are a defined feature and must take effect on the order line.
  */
-export class PricelistOrderItemPriceCalculationStrategy
-    implements OrderItemPriceCalculationStrategy
-{
-    private lookup!: PriceListLookupService;
+export class PricelistOrderItemPriceCalculationStrategy implements OrderItemPriceCalculationStrategy {
+  private lookup!: PriceListLookupService;
 
-    init(injector: Injector): void {
-        this.lookup = injector.get(PriceListLookupService);
-    }
+  init(injector: Injector): void {
+    this.lookup = injector.get(PriceListLookupService);
+  }
 
-    async calculateUnitPrice(
-        ctx: RequestContext,
-        productVariant: ProductVariant,
-        orderLineCustomFields: { [key: string]: any },
-        order: Order,
-        quantity: number,
-    ): Promise<PriceCalculationResult> {
-        const resolved = await this.lookup.resolvePrice(
-            ctx,
-            productVariant,
-            ctx.currencyCode,
-            quantity,
-        );
-        if (resolved) {
-            // Same money mode as the variant's listPrice (same channel /
-            // currency); tax conversion is handled downstream.
-            return {
-                price: resolved.value,
-                priceIncludesTax: productVariant.listPriceIncludesTax,
-            };
-        }
-        // Fallback = Vendure's DefaultOrderItemPriceCalculationStrategy:
-        // pass the variant's list price through unchanged.
-        return {
-            price: productVariant.listPrice,
-            priceIncludesTax: productVariant.listPriceIncludesTax,
-        };
+  async calculateUnitPrice(
+    ctx: RequestContext,
+    productVariant: ProductVariant,
+    _orderLineCustomFields: { [key: string]: any },
+    _order: Order,
+    quantity: number
+  ): Promise<PriceCalculationResult> {
+    const resolved = await this.lookup.resolvePrice(ctx, productVariant, ctx.currencyCode, quantity);
+    if (resolved) {
+      // Same money mode as the variant's listPrice (same channel /
+      // currency); tax conversion is handled downstream.
+      return {
+        price: resolved.value,
+        priceIncludesTax: productVariant.listPriceIncludesTax
+      };
     }
+    // Fallback = Vendure's DefaultOrderItemPriceCalculationStrategy:
+    // pass the variant's list price through unchanged.
+    return {
+      price: productVariant.listPrice,
+      priceIncludesTax: productVariant.listPriceIncludesTax
+    };
+  }
 }
