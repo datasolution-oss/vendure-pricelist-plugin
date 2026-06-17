@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import {
     EventBus,
     Logger,
@@ -7,8 +7,9 @@ import {
     TransactionalConnection,
 } from '@vendure/core';
 
-import { loggerCtx } from '../constants';
+import { loggerCtx, PRICELIST_PLUGIN_OPTIONS } from '../constants';
 import { PriceListLookupService } from '../services';
+import { PluginInitOptions } from '../types';
 
 /**
  * Stage 3 §2.4 — denormalised provenance snapshot on the order line
@@ -33,9 +34,14 @@ export class OrderLineProvenanceSubscriber implements OnModuleInit {
         private eventBus: EventBus,
         private connection: TransactionalConnection,
         private lookup: PriceListLookupService,
+        @Inject(PRICELIST_PLUGIN_OPTIONS) private options: PluginInitOptions,
     ) {}
 
     onModuleInit(): void {
+        // Opt-out: when `recordOrderLineProvenance` is false, we don't
+        // register the handler at all — no per-event overhead, and no
+        // `customFields.pricelistProvenance` writes.
+        if (this.options.recordOrderLineProvenance === false) return;
         this.eventBus.registerBlockingEventHandler({
             event: OrderLineEvent,
             id: 'pricelist-order-line-provenance',

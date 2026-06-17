@@ -109,4 +109,16 @@ export interface PluginInitOptions {
      * @default true
      */
     exposeBadgeOnShopApi?: boolean;
+
+    /**
+     * Persist a denormalised pricelist provenance snapshot on each new
+     * `OrderLine` (`customFields.pricelistProvenance`, internal/readonly).
+     * Used for support, forensics, and reporting on which list produced
+     * the price the customer saw at checkout. Set to `false` to opt out
+     * — e.g. to save the DB column write, or when a parallel audit
+     * pipeline already captures the provenance.
+     *
+     * @default true
+     */
+    recordOrderLineProvenance?: boolean;
 }

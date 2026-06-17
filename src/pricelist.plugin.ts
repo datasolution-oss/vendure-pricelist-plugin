@@ -67,7 +67,8 @@ function withDefaults(options: PluginInitOptions): PluginInitOptions {
       ...(options.killSwitchPerChannel ?? {})
     },
     defaultCacheTtlMs: options.defaultCacheTtlMs ?? DEFAULT_CACHE_TTL_MS,
-    exposeBadgeOnShopApi: options.exposeBadgeOnShopApi ?? true
+    exposeBadgeOnShopApi: options.exposeBadgeOnShopApi ?? true,
+    recordOrderLineProvenance: options.recordOrderLineProvenance ?? true
   };
 }
 
