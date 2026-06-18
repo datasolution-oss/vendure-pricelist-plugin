@@ -502,3 +502,42 @@ export const CREATE_ADMIN = gql`
         }
     }
 `;
+
+export const PRICE_LISTS_FOR_VARIANT = gql`
+    query PriceListsForVariant(
+        $productVariantId: ID!
+        $options: PriceListListOptions
+    ) {
+        priceListsForVariant(productVariantId: $productVariantId, options: $options) {
+            items {
+                id
+                code
+                name
+                valueType
+            }
+            totalItems
+        }
+    }
+`;
+
+export const SIMULATE_VARIANT_PRICE = gql`
+    query SimulateVariantPrice($input: SimulateVariantPriceInput!) {
+        simulateVariantPrice(input: $input) {
+            standardPrice
+            standardPriceWithTax
+            resolvedPrice
+            resolvedPriceWithTax
+            currencyCode
+            source
+            provenance {
+                listId
+                listCode
+                groupId
+                groupCode
+                stepQuantity
+                valueType
+                value
+            }
+        }
+    }
+`;
