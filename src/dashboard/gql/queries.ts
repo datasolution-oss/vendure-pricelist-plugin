@@ -314,24 +314,40 @@ export const priceListGroupDetailQuery = graphql(/* GraphQL */ `
 `);
 
 export const priceListsForVariantQuery = graphql(/* GraphQL */ `
-  query GetPriceListsForVariant($productVariantId: ID!) {
-    priceListsForVariant(productVariantId: $productVariantId) {
-      priceList {
+  query GetPriceListsForVariant($productVariantId: ID!, $options: PriceListListOptions) {
+    priceListsForVariant(productVariantId: $productVariantId, options: $options) {
+      items {
         id
-        code
         name
         valueType
       }
-      group {
+      totalItems
+    }
+  }
+`);
+
+export const simulatorCustomersQuery = graphql(/* GraphQL */ `
+  query SimulatorCustomers($options: CustomerListOptions) {
+    customers(options: $options) {
+      items {
         id
-        code
+        firstName
+        lastName
+        emailAddress
+      }
+      totalItems
+    }
+  }
+`);
+
+export const simulatorCustomerGroupsQuery = graphql(/* GraphQL */ `
+  query SimulatorCustomerGroups($options: CustomerGroupListOptions) {
+    customerGroups(options: $options) {
+      items {
+        id
         name
       }
-      cells {
-        currencyCode
-        stepQuantity
-        value
-      }
+      totalItems
     }
   }
 `);

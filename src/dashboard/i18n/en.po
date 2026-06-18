@@ -25,32 +25,38 @@ msgid "Pricelists"
 msgstr "Pricelists"
 
 #. js-lingui-explicit-id
-#: src/plugins/pricelist/dashboard/index.tsx:47
+#: src/plugins/pricelist/dashboard/index.tsx:60
+msgid "Variant"
+msgstr "Variant"
+
+#. js-lingui-explicit-id
+#: src/plugins/pricelist/dashboard/index.tsx:63
+#: src/plugins/pricelist/dashboard/index.tsx:67
 msgid "Pricelist"
 msgstr "Pricelist"
 
 #. js-lingui-explicit-id
-#: src/plugins/pricelist/dashboard/index.tsx:56
+#: src/plugins/pricelist/dashboard/index.tsx:77
 msgid "Item"
 msgstr "Item"
 
 #. js-lingui-explicit-id
-#: src/plugins/pricelist/dashboard/index.tsx:61
+#: src/plugins/pricelist/dashboard/index.tsx:82
 msgid "Pricelist Groups"
 msgstr "Pricelist Groups"
 
 #. js-lingui-explicit-id
-#: src/plugins/pricelist/dashboard/index.tsx:64
+#: src/plugins/pricelist/dashboard/index.tsx:85
 msgid "Groups"
 msgstr "Groups"
 
 #. js-lingui-explicit-id
-#: src/plugins/pricelist/dashboard/index.tsx:72
+#: src/plugins/pricelist/dashboard/index.tsx:93
 msgid "Pricelist Group"
 msgstr "Pricelist Group"
 
 #. js-lingui-explicit-id
-#: src/plugins/pricelist/dashboard/index.tsx:79
+#: src/plugins/pricelist/dashboard/index.tsx:100
 msgid "Pricelists & simulator"
 msgstr "Pricelists & simulator"
 
@@ -75,16 +81,21 @@ msgstr "≥ {step}"
 msgid "A currency has two tiers with the same Min qty. Make them distinct before saving."
 msgstr "A currency has two tiers with the same Min qty. Make them distinct before saving."
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:174
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:224
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:276
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:86
 msgid "Absolute"
 msgstr "Absolute"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:290
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:270
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:567
 msgid "Add"
 msgstr "Add"
+
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:168
+msgid "Add a price for this variant to the selected pricelist."
+msgstr "Add a price for this variant to the selected pricelist."
 
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:358
 #~ msgid "Add at least one currency and one tier to start editing prices."
@@ -110,6 +121,11 @@ msgstr "Add pricelist item"
 msgid "Add tier"
 msgstr "Add tier"
 
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:160
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:166
+msgid "Add to a pricelist"
+msgstr "Add to a pricelist"
+
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:525
 msgid "All channel currencies already have a block."
 msgstr "All channel currencies already have a block."
@@ -122,7 +138,7 @@ msgstr "All channel currencies already have a block."
 #~ msgid "Always"
 #~ msgstr "Always"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:222
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:247
 msgid "Anonymous"
 msgstr "Anonymous"
 
@@ -144,7 +160,7 @@ msgstr "Are you sure you want to delete {0} pricelists?"
 #~ msgid "Assignments ({0})"
 #~ msgstr "Assignments ({0})"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:149
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:161
 msgid "Associated pricelists"
 msgstr "Associated pricelists"
 
@@ -166,6 +182,7 @@ msgid "Bulk restore failed"
 msgstr "Bulk restore failed"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:284
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:264
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:168
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:115
 #: src/plugins/pricelist/dashboard/components/share-to-channel-dialog.tsx:227
@@ -193,8 +210,7 @@ msgid "Channels"
 msgstr "Channels"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:196
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:248
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:274
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:486
 msgid "Clear"
 msgstr "Clear"
 
@@ -226,12 +242,12 @@ msgid "Currencies"
 msgstr "Currencies"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:213
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:286
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:214
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:285
 msgid "Currency"
 msgstr "Currency"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:223
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:255
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:248
 msgid "Customer"
 msgstr "Customer"
 
@@ -322,6 +338,7 @@ msgid "Disabled"
 msgstr "Disabled"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:251
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:246
 msgid "Discount (%)"
 msgstr "Discount (%)"
 
@@ -391,6 +408,10 @@ msgstr "Failed to add customer group"
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:155
 msgid "Failed to add item"
 msgstr "Failed to add item"
+
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:142
+msgid "Failed to add variant to pricelist"
+msgstr "Failed to add variant to pricelist"
 
 #: src/plugins/pricelist/dashboard/components/group-membership-row.tsx:90
 msgid "Failed to change group"
@@ -512,7 +533,11 @@ msgstr "Failed to update"
 msgid "Fixed prices"
 msgstr "Fixed prices"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:224
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:592
+msgid "gross"
+msgstr "gross"
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:249
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:370
 msgid "Group"
 msgstr "Group"
@@ -588,12 +613,18 @@ msgid "Locked once created."
 msgstr "Locked once created."
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:234
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:233
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:424
 msgid "Min qty"
 msgstr "Min qty"
 
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:582
+msgid "n/a"
+msgstr "n/a"
+
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:127
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:94
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:197
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:294
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:166
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:253
@@ -606,6 +637,10 @@ msgstr "Name"
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:229
 #~ msgid "Name ({localeLabel})"
 #~ msgstr "Name ({localeLabel})"
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:587
+msgid "net"
+msgstr "net"
 
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:77
 msgid "New group"
@@ -645,6 +680,14 @@ msgstr "No catalog price for {currencyCode} on this variant."
 msgid "No currencies yet."
 msgstr "No currencies yet."
 
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:392
+msgid "No customer found"
+msgstr "No customer found"
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:453
+msgid "No group found"
+msgstr "No group found"
+
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:95
 #~ msgid "No groups yet."
 #~ msgstr "No groups yet."
@@ -668,6 +711,10 @@ msgstr "No matching customer groups."
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:285
 msgid "No matching customers."
 msgstr "No matching customers."
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:531
+msgid "No pricelist applies — standard price is used."
+msgstr "No pricelist applies — standard price is used."
 
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:242
 msgid "No pricelists in this group yet."
@@ -746,7 +793,7 @@ msgstr "Origin channel"
 msgid "Pending deletion"
 msgstr "Pending deletion"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:173
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:224
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:275
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:86
 msgid "Percentage"
@@ -781,6 +828,7 @@ msgid "Previous page"
 msgstr "Previous page"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:252
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:246
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:425
 msgid "Price"
 msgstr "Price"
@@ -789,9 +837,13 @@ msgstr "Price"
 #~ msgid "Price pivot"
 #~ msgstr "Price pivot"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:212
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:237
 msgid "Price simulator"
 msgstr "Price simulator"
+
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:181
+msgid "Pricelist"
+msgstr "Pricelist"
 
 #: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:75
 msgid "Pricelist created"
@@ -829,7 +881,7 @@ msgstr "Pricelists"
 msgid "Pricelists in this group"
 msgstr "Pricelists in this group"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:151
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:163
 msgid "Pricelists on this channel that contain this variant."
 msgstr "Pricelists on this channel that contain this variant."
 
@@ -863,8 +915,8 @@ msgstr "Product variant"
 #~ msgstr "Qté minimum"
 
 #: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:187
-msgid "qty"
-msgstr "qty"
+#~ msgid "qty"
+#~ msgstr "qty"
 
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:376
 msgid "Qty"
@@ -875,7 +927,7 @@ msgstr "Qty"
 #~ msgid "qty {step}+"
 #~ msgstr "qty {step}+"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:304
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:303
 msgid "Quantity"
 msgstr "Quantity"
 
@@ -917,9 +969,13 @@ msgstr "Remove tier"
 msgid "Removed {ok} variant(s)"
 msgstr "Removed {ok} variant(s)"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:214
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:239
 msgid "Resolve the price for a customer, a group or an anonymous visitor at a given quantity."
 msgstr "Resolve the price for a customer, a group or an anonymous visitor at a given quantity."
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:521
+msgid "Resolved price"
+msgstr "Resolved price"
 
 #: src/plugins/pricelist/dashboard/components/delete-price-list-bulk-action.tsx:123
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:235
@@ -951,6 +1007,14 @@ msgstr "Save"
 msgid "Saved"
 msgstr "Saved"
 
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:382
+msgid "Search a customer…"
+msgstr "Search a customer…"
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:447
+msgid "Search a group…"
+msgstr "Search a group…"
+
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:400
 msgid "Search by name"
 msgstr "Search by name"
@@ -959,13 +1023,21 @@ msgstr "Search by name"
 msgid "Search by name or email"
 msgstr "Search by name or email"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:322
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:391
+msgid "Searching…"
+msgstr "Searching…"
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:321
 msgid "Select a customer to simulate."
 msgstr "Select a customer to simulate."
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:323
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:322
 msgid "Select a group to simulate."
 msgstr "Select a group to simulate."
+
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:190
+msgid "Select a pricelist"
+msgstr "Select a pricelist"
 
 #: src/plugins/pricelist/dashboard/components/timezone-select.tsx:91
 msgid "Select…"
@@ -1003,7 +1075,7 @@ msgstr "Show pending deletion"
 #~ msgid "Showing {0}–{1} of {totalItems}"
 #~ msgstr "Showing {0}–{1} of {totalItems}"
 
-#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:326
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:325
 msgid "Simulating…"
 msgstr "Simulating…"
 
@@ -1018,6 +1090,10 @@ msgstr "Skipped the default group (cannot be deleted)."
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:145
 #~ msgid "Specific customers ({0})"
 #~ msgstr "Specific customers ({0})"
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:515
+msgid "Standard price"
+msgstr "Standard price"
 
 #: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:334
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:109
@@ -1123,9 +1199,13 @@ msgstr "This pricelist is pending deletion. Restore it to cancel."
 msgid "This pricelist was created on channel {originChannelCode}. Edits are only allowed from its origin channel."
 msgstr "This pricelist was created on channel {originChannelCode}. Edits are only allowed from its origin channel."
 
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:207
+msgid "This variant is already in every pricelist on this channel."
+msgstr "This variant is already in every pricelist on this channel."
+
 #: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:157
-msgid "This variant is not in any pricelist."
-msgstr "This variant is not in any pricelist."
+#~ msgid "This variant is not in any pricelist."
+#~ msgstr "This variant is not in any pricelist."
 
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:218
 msgid "Tiers"
@@ -1151,10 +1231,17 @@ msgstr "Tiers"
 msgid "Two stacked −10% lines compound to −19%, not −20%."
 msgstr "Two stacked −10% lines compound to −19%, not −20%."
 
-#: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:177
-#: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:147
-#~ msgid "Type"
-#~ msgstr "Type"
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:219
+msgid "Type"
+msgstr "Type"
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:389
+msgid "Type to search a customer."
+msgstr "Type to search a customer."
+
+#: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:453
+msgid "Type to search a group."
+msgstr "Type to search a group."
 
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:96
 msgid "Updated"
@@ -1183,9 +1270,14 @@ msgstr "Use \"Share to channel\" above to make this pricelist available on other
 msgid "Value type"
 msgstr "Value type"
 
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:174
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:174
 msgid "Variant"
 msgstr "Variant"
+
+#: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:132
+msgid "Variant added to pricelist"
+msgstr "Variant added to pricelist"
 
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:105
 #~ msgid "Variant removed"

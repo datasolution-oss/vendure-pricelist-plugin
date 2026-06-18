@@ -233,13 +233,6 @@ export const adminApiExtensions = gql`
 
     # ---- Queries ----
 
-    """One pricelist (visible on the active channel) containing a variant."""
-    type VariantPriceListAssociation {
-        priceList: PriceList!
-        group: PriceListGroup
-        cells: [PriceListVariantSummaryCell!]!
-    }
-
     input SimulateVariantPriceInput {
         productVariantId: ID!
         currencyCode: CurrencyCode!
@@ -288,8 +281,8 @@ export const adminApiExtensions = gql`
         priceListDefaultGroup(channelId: ID!): PriceListGroup!
         """Per-channel access row for a (PriceList, Channel) pair, if any."""
         priceListChannelAccess(priceListId: ID!, channelId: ID!): PriceListChannelAccess
-        """Pricelists (visible on the active channel) that contain this variant."""
-        priceListsForVariant(productVariantId: ID!): [VariantPriceListAssociation!]!
+        """Paginated pricelists (visible on the active channel) that contain this variant."""
+        priceListsForVariant(productVariantId: ID!, options: PriceListListOptions): PriceListList!
         """
         Simulate the resolved cascade price for a variant as a chosen
         customer / customer-group / anonymous target + quantity. Admin tooling;
