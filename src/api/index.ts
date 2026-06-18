@@ -5,6 +5,7 @@ import {
 } from './price-list-entity.admin-resolver';
 import { PriceListGroupAdminResolver } from './price-list-group.admin-resolver';
 import { PriceListItemAdminResolver } from './price-list-item.admin-resolver';
+import { PriceListSimulationAdminResolver } from './price-list-simulation.admin-resolver';
 import { PriceListShopResolver } from './price-list.shop-resolver';
 
 export { adminApiExtensions } from './admin-api.schema';
@@ -16,6 +17,7 @@ export const ALL_RESOLVERS = [
     PriceListGroupAdminResolver,
     PriceListEntityResolver,
     PriceListGroupEntityResolver,
+    PriceListSimulationAdminResolver,
 ];
 
 export const ALL_SHOP_RESOLVERS = [PriceListShopResolver];

@@ -312,3 +312,47 @@ export const priceListGroupDetailQuery = graphql(/* GraphQL */ `
     }
   }
 `);
+
+export const priceListsForVariantQuery = graphql(/* GraphQL */ `
+  query GetPriceListsForVariant($productVariantId: ID!) {
+    priceListsForVariant(productVariantId: $productVariantId) {
+      priceList {
+        id
+        code
+        name
+        valueType
+      }
+      group {
+        id
+        code
+        name
+      }
+      cells {
+        currencyCode
+        stepQuantity
+        value
+      }
+    }
+  }
+`);
+
+export const simulateVariantPriceQuery = graphql(/* GraphQL */ `
+  query SimulateVariantPrice($input: SimulateVariantPriceInput!) {
+    simulateVariantPrice(input: $input) {
+      standardPrice
+      standardPriceWithTax
+      resolvedPrice
+      resolvedPriceWithTax
+      currencyCode
+      source
+      provenance {
+        listId
+        listCode
+        groupCode
+        valueType
+        stepQuantity
+        value
+      }
+    }
+  }
+`);

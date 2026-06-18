@@ -7,6 +7,8 @@ import { PriceListGroupListPage } from './pages/price-list-group-list';
 import { PriceListItemDetailPage } from './pages/price-list-item-detail';
 import { PriceListListPage } from './pages/price-list-list';
 
+import { VariantPriceListBlock } from './components/variant-pricelist-block';
+
 // NOTE on the /* i18n */ markers below: these strings live at module
 // scope (Vendure's nav/breadcrumb renderer reads them and calls
 // `i18n.t(string)` at render time). Lingui's macro can't transform
@@ -71,7 +73,21 @@ defineDashboardExtension({
       component: () => <PriceListGroupDetailPage />
     }
   ],
-  pageBlocks: [],
+  pageBlocks: [
+    {
+      id: 'pricelist-variant-pricing',
+      title: /* i18n */ 'Pricelists & simulator',
+      location: {
+        pageId: 'product-variant-detail',
+        position: { blockId: 'price-and-tax', order: 'after' },
+        column: 'main'
+      },
+      // Read-only inspection block; the backing admin queries are
+      // independently @Allow(ReadPriceList)-guarded.
+      requiresPermission: 'ReadPriceList',
+      component: VariantPriceListBlock
+    }
+  ],
   actionBarItems: [],
   alerts: [],
   widgets: [],

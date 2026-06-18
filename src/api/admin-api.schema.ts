@@ -233,6 +233,46 @@ export const adminApiExtensions = gql`
 
     # ---- Queries ----
 
+    """One pricelist (visible on the active channel) containing a variant."""
+    type VariantPriceListAssociation {
+        priceList: PriceList!
+        group: PriceListGroup
+        cells: [PriceListVariantSummaryCell!]!
+    }
+
+    input SimulateVariantPriceInput {
+        productVariantId: ID!
+        currencyCode: CurrencyCode!
+        "stepQuantity to evaluate (>= 1)."
+        quantity: Int!
+        "Mutually exclusive with customerGroupId. Omit both for anonymous."
+        customerId: ID
+        customerGroupId: ID
+    }
+
+    type SimulatedProvenanceEntry {
+        listId: ID!
+        listCode: String!
+        groupId: ID!
+        groupCode: String!
+        stepQuantity: Int!
+        valueType: PriceListValueType!
+        value: Int!
+    }
+
+    type SimulatedVariantPrice {
+        "Standard (pre-pricelist) price, net minor units; null if not priced."
+        standardPrice: Int
+        standardPriceWithTax: Int
+        "Resolved cascade price, net minor units; null when no list applies."
+        resolvedPrice: Int
+        resolvedPriceWithTax: Int
+        currencyCode: CurrencyCode!
+        "'CASCADE' | 'EXTERNAL' | null when no list applies."
+        source: String
+        provenance: [SimulatedProvenanceEntry!]!
+    }
+
     extend type Query {
         priceList(id: ID!): PriceList
         priceLists(options: PriceListListOptions): PriceListList!
@@ -248,6 +288,14 @@ export const adminApiExtensions = gql`
         priceListDefaultGroup(channelId: ID!): PriceListGroup!
         """Per-channel access row for a (PriceList, Channel) pair, if any."""
         priceListChannelAccess(priceListId: ID!, channelId: ID!): PriceListChannelAccess
+        """Pricelists (visible on the active channel) that contain this variant."""
+        priceListsForVariant(productVariantId: ID!): [VariantPriceListAssociation!]!
+        """
+        Simulate the resolved cascade price for a variant as a chosen
+        customer / customer-group / anonymous target + quantity. Admin tooling;
+        reuses the production resolution + calculation strategies.
+        """
+        simulateVariantPrice(input: SimulateVariantPriceInput!): SimulatedVariantPrice!
         """
         Paginated list of pricelists bound to a group (via the
         membership pivot). Backs the "pricelists in this group" block
