@@ -44,7 +44,28 @@ defineDashboardExtension({
     },
     {
       path: '/pricelists/$id',
-      loader: () => ({ breadcrumb: /* i18n */ 'Pricelist' }),
+      // Optional origin carried from the variant page's "associated
+      // pricelists" table, so we can render a breadcrumb back to that
+      // variant (the pricelist page is otherwise not tied to a product).
+      validateSearch: (search: Record<string, unknown>) => ({
+        fromVariantId: search.fromVariantId ? String(search.fromVariantId) : undefined,
+        fromVariantName: search.fromVariantName ? String(search.fromVariantName) : undefined
+      }),
+      loader: ({ location }: any) => {
+        const s = location?.search ?? {};
+        if (s.fromVariantId) {
+          return {
+            breadcrumb: [
+              {
+                label: s.fromVariantName || /* i18n */ 'Variant',
+                path: `/product-variants/${s.fromVariantId}`
+              },
+              /* i18n */ 'Pricelist'
+            ]
+          };
+        }
+        return { breadcrumb: /* i18n */ 'Pricelist' };
+      },
       component: () => <PriceListDetailPage />
     },
     {

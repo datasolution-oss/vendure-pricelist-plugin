@@ -17,25 +17,42 @@ import {
     SelectValue,
 } from '@/vdb/components/ui/select.js';
 import { Separator } from '@/vdb/components/ui/separator.js';
+import {
+    Command,
+    CommandEmpty,
+    CommandInput,
+    CommandItem,
+    CommandList,
+} from '@/vdb/components/ui/command.js';
 import { Money } from '@/vdb/components/data-display/money.js';
-import { CustomerSelector } from '@/vdb/components/shared/customer-selector.js';
-import { CustomerGroupSelector } from '@/vdb/components/shared/customer-group-selector.js';
+import { PaginatedListDataTable } from '@/vdb/components/shared/paginated-list-data-table.js';
 import { api } from '@/vdb/graphql/api.js';
 import { useChannel } from '@/vdb/hooks/use-channel.js';
 import { useLingui } from '@lingui/react/macro';
+import { Link } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { ColumnFiltersState, SortingState } from '@tanstack/react-table';
+import { useDebounce } from '@uidotdev/usehooks';
 import { ArrowDown, ArrowUp, Minus, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import { priceListsForVariantQuery, simulateVariantPriceQuery } from '../gql/queries';
+import {
+    priceListsForVariantQuery,
+    simulateVariantPriceQuery,
+    simulatorCustomerGroupsQuery,
+    simulatorCustomersQuery,
+} from '../gql/queries';
+
+import { AddVariantToPriceListDialog } from './add-variant-to-pricelist-dialog';
 
 /**
  * Page-block dropped onto the ProductVariant detail page (main column,
  * after the "Price and tax" block). Two read-only sections:
  *
- *  1. Associated pricelists — every list on the active channel that
- *     contains this variant, with its group and per-currency / per-tier
- *     cells.
+ *  1. Associated pricelists — a standard Vendure paginated table listing
+ *     every list on the active channel that contains this variant. Just
+ *     the name (linking to the list config) and its value type — no
+ *     prices (those live on the list's own page).
  *  2. Price simulator — "what would this customer / group / anonymous
  *     visitor pay at quantity N?". Runs through the *real* resolution +
  *     calculation strategies server-side, so the number matches the
@@ -65,35 +82,30 @@ interface SimulatedVariantPrice {
     provenance: ProvenanceEntry[];
 }
 
-interface VariantPriceListAssociation {
-    priceList: { id: string; code: string; name: string; valueType: 'ABSOLUTE' | 'PERCENTAGE' };
-    group: { id: string; code: string; name: string } | null;
-    cells: Array<{ currencyCode: string; stepQuantity: number; value: number }>;
-}
-
 export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?: any } }>) {
     const { t } = useLingui();
     const { activeChannel } = useChannel();
     const variantId: string | undefined = context.entity?.id;
+    const variantName: string = context.entity?.name ?? '';
 
     const availableCurrencyCodes: string[] = activeChannel?.availableCurrencyCodes ?? ['USD'];
     const defaultCurrencyCode: string = activeChannel?.defaultCurrencyCode ?? 'USD';
 
+    // ---- associated-lists table state ----
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [sorting, setSorting] = useState<SortingState>([{ id: 'name', desc: false }]);
+    const [filters, setFilters] = useState<ColumnFiltersState>([]);
+    // Bumped after an "add to pricelist" to remount the table and refetch
+    // (the PaginatedListDataTable owns its react-query cache internally).
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    // ---- simulator state ----
     const [mode, setMode] = useState<SimulationMode>('ANONYMOUS');
     const [customer, setCustomer] = useState<{ id: string; label: string } | null>(null);
     const [group, setGroup] = useState<{ id: string; name: string } | null>(null);
     const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrencyCode);
     const [quantity, setQuantity] = useState<number>(1);
-
-    const { data: associationsData } = useQuery({
-        queryKey: ['priceListsForVariant', variantId],
-        queryFn: () =>
-            api.query(priceListsForVariantQuery, {
-                productVariantId: variantId as string,
-            }) as Promise<{ priceListsForVariant: VariantPriceListAssociation[] }>,
-        enabled: !!variantId,
-    });
-    const associations = associationsData?.priceListsForVariant ?? [];
 
     // The simulation only runs once the chosen mode has a valid target.
     const targetReady =
@@ -115,10 +127,8 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
         ],
         queryFn: () =>
             // `as any` on the variables follows the established
-            // convention in this plugin (cf. addPriceListItemMutation):
-            // gql.tada infers custom input-object variables as `never`
-            // in this setup, so scalar-only operations type cleanly but
-            // input-object ones need the cast.
+            // convention in this plugin: gql.tada infers custom
+            // input-object variables as `never` in this setup.
             api.query(simulateVariantPriceQuery, {
                 input: {
                     productVariantId: variantId as string,
@@ -146,63 +156,78 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
             {/* ---- Associated pricelists ---- */}
             <Card>
                 <CardHeader>
-                    <CardTitle>{t`Associated pricelists`}</CardTitle>
-                    <CardDescription>
-                        {t`Pricelists on this channel that contain this variant.`}
-                    </CardDescription>
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-1.5">
+                            <CardTitle>{t`Associated pricelists`}</CardTitle>
+                            <CardDescription>
+                                {t`Pricelists on this channel that contain this variant.`}
+                            </CardDescription>
+                        </div>
+                        <AddVariantToPriceListDialog
+                            productVariantId={variantId}
+                            variantName={variantName}
+                            availableCurrencyCodes={availableCurrencyCodes}
+                            defaultCurrencyCode={defaultCurrencyCode}
+                            onAdded={() => setRefreshKey(k => k + 1)}
+                        />
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    {associations.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            {t`This variant is not in any pricelist.`}
-                        </p>
-                    ) : (
-                        <div className="space-y-3">
-                            {associations.map(a => (
-                                <div
-                                    key={a.priceList.id}
-                                    className="rounded-md border p-3 space-y-2"
-                                >
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-medium">{a.priceList.name}</span>
-                                        <Badge variant="outline" className="font-mono text-xs">
-                                            {a.priceList.code}
-                                        </Badge>
+                    <PaginatedListDataTable
+                        key={refreshKey}
+                        listQuery={priceListsForVariantQuery as any}
+                        transformVariables={(variables: any) => ({
+                            ...variables,
+                            productVariantId: variantId,
+                        })}
+                        page={page}
+                        itemsPerPage={pageSize}
+                        sorting={sorting}
+                        columnFilters={filters}
+                        onPageChange={(_, p, perPage) => {
+                            setPage(p);
+                            setPageSize(perPage);
+                        }}
+                        onSortChange={(_, s) => setSorting(s)}
+                        onFilterChange={(_, f) => setFilters(f)}
+                        defaultVisibility={{ id: false }}
+                        defaultColumnOrder={['name', 'valueType']}
+                        customizeColumns={{
+                            name: {
+                                header: () => t`Name`,
+                                cell: ({ cell, row }: any) => (
+                                    <Button
+                                        variant="ghost"
+                                        className="px-0"
+                                        render={
+                                            <Link
+                                                to={`/pricelists/${row.original.id}`}
+                                                search={
+                                                    {
+                                                        fromVariantId: variantId,
+                                                        fromVariantName: variantName,
+                                                    } as any
+                                                }
+                                            />
+                                        }
+                                    >
+                                        {cell.getValue() as string}
+                                    </Button>
+                                ),
+                            },
+                            valueType: {
+                                header: () => t`Type`,
+                                cell: ({ cell }: any) => {
+                                    const v = cell.getValue() as string;
+                                    return (
                                         <Badge variant="secondary">
-                                            {a.priceList.valueType === 'PERCENTAGE'
-                                                ? t`Percentage`
-                                                : t`Absolute`}
+                                            {v === 'PERCENTAGE' ? t`Percentage` : t`Absolute`}
                                         </Badge>
-                                        {a.group && (
-                                            <Badge variant="default">{a.group.name}</Badge>
-                                        )}
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {a.cells.map(c => (
-                                            <div
-                                                key={`${c.currencyCode}-${c.stepQuantity}`}
-                                                className="rounded border bg-muted/40 px-2 py-1 text-xs"
-                                            >
-                                                <span className="text-muted-foreground">
-                                                    {c.currencyCode} · {t`qty`} {c.stepQuantity}
-                                                </span>{' '}
-                                                <span className="font-medium">
-                                                    {a.priceList.valueType === 'PERCENTAGE' ? (
-                                                        `${(c.value / 100).toFixed(2)} %`
-                                                    ) : (
-                                                        <Money
-                                                            value={c.value}
-                                                            currency={c.currencyCode}
-                                                        />
-                                                    )}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                    );
+                                },
+                            },
+                        }}
+                    />
                 </CardContent>
             </Card>
 
@@ -236,49 +261,23 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
                         ))}
                     </div>
 
-                    {/* target selector */}
-                    {mode === 'CUSTOMER' &&
-                        (customer ? (
-                            <div className="flex items-center justify-between rounded-md border bg-muted/40 px-2 py-1.5 text-sm">
-                                <span>{customer.label}</span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={() => setCustomer(null)}
-                                    aria-label={t`Clear`}
-                                >
-                                    <X className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <CustomerSelector
-                                label={t`Customer`}
-                                onSelect={c =>
-                                    setCustomer({
-                                        id: c.id,
-                                        label:
-                                            `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() ||
-                                            c.emailAddress,
-                                    })
-                                }
-                            />
-                        ))}
-                    {mode === 'GROUP' &&
-                        (group ? (
-                            <div className="flex items-center justify-between rounded-md border bg-muted/40 px-2 py-1.5 text-sm">
-                                <span>{group.name}</span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-sm"
-                                    onClick={() => setGroup(null)}
-                                    aria-label={t`Clear`}
-                                >
-                                    <X className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <CustomerGroupSelector onSelect={g => setGroup(g)} />
-                        ))}
+                    {/* Inline search picker (no popover → no page-jump on
+                        open). The search stays available even after a pick, so
+                        the target can be changed at any time. */}
+                    {mode === 'CUSTOMER' && (
+                        <CustomerPicker
+                            selected={customer}
+                            onSelect={setCustomer}
+                            onClear={() => setCustomer(null)}
+                        />
+                    )}
+                    {mode === 'GROUP' && (
+                        <GroupPicker
+                            selected={group}
+                            onSelect={setGroup}
+                            onClear={() => setGroup(null)}
+                        />
+                    )}
 
                     {/* currency + quantity */}
                     <div className="grid grid-cols-2 gap-3">
@@ -325,7 +324,7 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
                     ) : simLoading ? (
                         <p className="text-sm text-muted-foreground">{t`Simulating…`}</p>
                     ) : sim ? (
-                        <SimulationResult sim={sim} delta={delta} t={t} />
+                        <SimulationResult sim={sim} delta={delta} />
                     ) : null}
                 </CardContent>
             </Card>
@@ -333,15 +332,180 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
     );
 }
 
+function CustomerPicker({
+    selected,
+    onSelect,
+    onClear,
+}: Readonly<{
+    selected: { id: string; label: string } | null;
+    onSelect: (v: { id: string; label: string }) => void;
+    onClear: () => void;
+}>) {
+    const { t } = useLingui();
+    const [term, setTerm] = useState('');
+    const debounced = useDebounce(term, 300);
+    const hasTerm = debounced.trim().length > 0;
+    const { data, isFetching } = useQuery({
+        queryKey: ['sim-customers', debounced],
+        queryFn: () =>
+            api.query(simulatorCustomersQuery, {
+                options: {
+                    take: 10,
+                    sort: { lastName: 'ASC' },
+                    filter: {
+                        firstName: { contains: debounced },
+                        lastName: { contains: debounced },
+                        emailAddress: { contains: debounced },
+                    },
+                    filterOperator: 'OR',
+                },
+            } as any) as Promise<{
+                customers: {
+                    items: Array<{
+                        id: string;
+                        firstName: string | null;
+                        lastName: string | null;
+                        emailAddress: string;
+                    }>;
+                };
+            }>,
+        // Empty by default — only search once the merchandiser types.
+        enabled: hasTerm,
+    });
+    const items = hasTerm ? data?.customers.items ?? [] : [];
+
+    return (
+        <div className="space-y-2">
+            {selected ? (
+                <SelectedChip label={selected.label} onClear={onClear} />
+            ) : (
+                <Command shouldFilter={false} className="rounded-md border">
+                    <CommandInput
+                        placeholder={t`Search a customer…`}
+                        value={term}
+                        onValueChange={setTerm}
+                    />
+                    <CommandList className="max-h-48">
+                        <CommandEmpty>
+                            {!term.trim()
+                                ? t`Type to search a customer.`
+                                : isFetching
+                                  ? t`Searching…`
+                                  : t`No customer found`}
+                        </CommandEmpty>
+                        {items.map(c => {
+                            const label =
+                                `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() ||
+                                c.emailAddress;
+                            return (
+                                <CommandItem
+                                    key={c.id}
+                                    value={c.id}
+                                    onSelect={() => onSelect({ id: c.id, label })}
+                                    className="flex flex-col items-start"
+                                >
+                                    <span className="font-medium">{label}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                        {c.emailAddress}
+                                    </span>
+                                </CommandItem>
+                            );
+                        })}
+                    </CommandList>
+                </Command>
+            )}
+        </div>
+    );
+}
+
+function GroupPicker({
+    selected,
+    onSelect,
+    onClear,
+}: Readonly<{
+    selected: { id: string; name: string } | null;
+    onSelect: (v: { id: string; name: string }) => void;
+    onClear: () => void;
+}>) {
+    const { t } = useLingui();
+    const [term, setTerm] = useState('');
+    const { data } = useQuery({
+        queryKey: ['sim-groups'],
+        queryFn: () =>
+            api.query(simulatorCustomerGroupsQuery, {
+                options: { take: 100, sort: { name: 'ASC' } },
+            } as any) as Promise<{ customerGroups: { items: Array<{ id: string; name: string }> } }>,
+        staleTime: 1000 * 60 * 5,
+    });
+    const all = data?.customerGroups.items ?? [];
+    // Empty by default — only show matches once the merchandiser types.
+    const items = term.trim()
+        ? all.filter(g => g.name.toLowerCase().includes(term.trim().toLowerCase()))
+        : [];
+
+    return (
+        <div className="space-y-2">
+            {selected ? (
+                <SelectedChip label={selected.name} onClear={onClear} />
+            ) : (
+                <Command shouldFilter={false} className="rounded-md border">
+                    <CommandInput
+                        placeholder={t`Search a group…`}
+                        value={term}
+                        onValueChange={setTerm}
+                    />
+                    <CommandList className="max-h-48">
+                        <CommandEmpty>
+                            {term.trim() ? t`No group found` : t`Type to search a group.`}
+                        </CommandEmpty>
+                        {items.map(g => (
+                            <CommandItem
+                                key={g.id}
+                                value={g.id}
+                                onSelect={() => onSelect({ id: g.id, name: g.name })}
+                            >
+                                {g.name}
+                            </CommandItem>
+                        ))}
+                    </CommandList>
+                </Command>
+            )}
+        </div>
+    );
+}
+
+function SelectedChip({
+    label,
+    onClear,
+}: Readonly<{
+    label: string;
+    onClear: () => void;
+}>) {
+    const { t } = useLingui();
+    return (
+        <div className="flex items-center justify-between rounded-md border bg-muted/40 px-2 py-1.5 text-sm">
+            <span>{label}</span>
+            <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={onClear}
+                aria-label={t`Clear`}
+            >
+                <X className="h-3 w-3" />
+            </Button>
+        </div>
+    );
+}
+
 function SimulationResult({
     sim,
     delta,
-    t,
 }: Readonly<{
     sim: SimulatedVariantPrice;
     delta: { diff: number; pct: number } | null;
-    t: (s: TemplateStringsArray, ...a: any[]) => string;
 }>) {
+    const { t } = useLingui();
     const hasResolved = sim.resolvedPrice != null;
     const DeltaIcon = delta == null || delta.diff === 0 ? Minus : delta.diff < 0 ? ArrowDown : ArrowUp;
     const deltaColor =
@@ -359,7 +523,6 @@ function SimulationResult({
                     net={sim.standardPrice}
                     gross={sim.standardPriceWithTax}
                     currency={sim.currencyCode}
-                    t={t}
                 />
                 <PriceCell
                     label={t`Resolved price`}
@@ -367,7 +530,6 @@ function SimulationResult({
                     gross={sim.resolvedPriceWithTax}
                     currency={sim.currencyCode}
                     emphasis
-                    t={t}
                 />
             </div>
 
@@ -412,15 +574,14 @@ function PriceCell({
     gross,
     currency,
     emphasis,
-    t,
 }: Readonly<{
     label: string;
     net: number | null;
     gross: number | null;
     currency: string;
     emphasis?: boolean;
-    t: (s: TemplateStringsArray, ...a: any[]) => string;
 }>) {
+    const { t } = useLingui();
     return (
         <div className={`rounded-md border p-3 ${emphasis ? 'bg-muted/40' : ''}`}>
             <div className="text-xs text-muted-foreground">{label}</div>

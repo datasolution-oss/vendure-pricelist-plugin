@@ -4,24 +4,24 @@ import { ID } from '@vendure/common/lib/shared-types';
 import { Allow, Ctx, RequestContext } from '@vendure/core';
 
 import { priceListPermission } from '../permissions';
+import { PriceList } from '../entities';
 import {
-    PriceListItemService,
+    PriceListService,
     PriceListSimulationService,
     SimulatedVariantPrice,
-    VariantPriceListAssociation,
 } from '../services';
 
 /**
  * Admin-only read queries backing the variant-page pricelist block:
- * - `priceListsForVariant` — lists (on the active channel) that contain
- *   this variant, with group + cells.
+ * - `priceListsForVariant` — paginated lists (on the active channel) that
+ *   contain this variant; powers the standard Vendure list table.
  * - `simulateVariantPrice` — "what would this customer/group pay?" run
  *   through the real cascade.
  */
 @Resolver()
 export class PriceListSimulationAdminResolver {
     constructor(
-        private itemService: PriceListItemService,
+        private priceListService: PriceListService,
         private simulationService: PriceListSimulationService,
     ) {}
 
@@ -29,9 +29,13 @@ export class PriceListSimulationAdminResolver {
     @Allow(priceListPermission.Read)
     async priceListsForVariant(
         @Ctx() ctx: RequestContext,
-        @Args() args: { productVariantId: ID },
-    ): Promise<VariantPriceListAssociation[]> {
-        return this.itemService.findListsForVariant(ctx, args.productVariantId);
+        @Args() args: { productVariantId: ID; options?: any },
+    ): Promise<{ items: PriceList[]; totalItems: number }> {
+        return this.priceListService.findAllForVariant(
+            ctx,
+            args.productVariantId,
+            args.options,
+        );
     }
 
     @Query()

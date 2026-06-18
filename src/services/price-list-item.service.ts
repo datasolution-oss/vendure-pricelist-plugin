@@ -15,7 +15,6 @@ import {
     TransactionalConnection,
     Translated,
     UserInputError,
-    idsAreEqual,
 } from '@vendure/core';
 import { IsNull } from 'typeorm';
 
@@ -25,7 +24,7 @@ import {
     ERR_PRICELIST_PIVOT_INVALID_STEP_QUANTITY,
     ERR_PRICELIST_PIVOT_INVALID_VALUE,
 } from '../constants';
-import { PriceList, PriceListGroup, PriceListItem } from '../entities';
+import { PriceListItem } from '../entities';
 
 import { PriceListService } from './price-list.service';
 
@@ -108,19 +107,6 @@ export interface PriceListVariantSummary {
     latestUpdatedAt: Date;
 }
 
-/**
- * One PriceList (visible on the active channel) that contains an item for a
- * given variant, with the list's group on this channel and the variant's
- * cells. Backs the "associated pricelists" block on the variant page.
- */
-export interface VariantPriceListAssociation {
-    /** Runtime-translated PriceList (from PriceListService.findOne). */
-    priceList: PriceList;
-    /** Group bound on the active channel, or null if no membership here. */
-    group: PriceListGroup | null;
-    cells: PriceListVariantSummaryCell[];
-}
-
 @Injectable()
 export class PriceListItemService {
     constructor(
@@ -129,60 +115,6 @@ export class PriceListItemService {
         private priceListService: PriceListService,
         private productVariantService: ProductVariantService,
     ) {}
-
-    /**
-     * Lists (visible on the active channel) that contain an item for this
-     * variant, each with its group on this channel + the variant's cells.
-     * Backs the "associated pricelists" block on the variant page. Read-only.
-     */
-    async findListsForVariant(
-        ctx: RequestContext,
-        productVariantId: ID,
-    ): Promise<VariantPriceListAssociation[]> {
-        const items = await this.connection
-            .getRepository(ctx, PriceListItem)
-            .find({
-                where: {
-                    productVariantId,
-                    priceList: { deletedAt: IsNull() },
-                },
-                relations: ['priceList'],
-                order: { currencyCode: 'ASC', stepQuantity: 'ASC' },
-            });
-
-        // Group cells by list id, preserving first-seen order.
-        const cellsByList = new Map<string, PriceListVariantSummaryCell[]>();
-        const listOrder: ID[] = [];
-        for (const it of items) {
-            const key = String(it.priceListId);
-            if (!cellsByList.has(key)) {
-                cellsByList.set(key, []);
-                listOrder.push(it.priceListId);
-            }
-            cellsByList.get(key)!.push({
-                currencyCode: it.currencyCode,
-                stepQuantity: it.stepQuantity,
-                value: it.value,
-            });
-        }
-
-        const result: VariantPriceListAssociation[] = [];
-        for (const listId of listOrder) {
-            // findOne is channel-scoped + translated + loads groupMemberships,
-            // so a list not visible on this channel is skipped here.
-            const list = await this.priceListService.findOne(ctx, listId);
-            if (!list) continue;
-            const membership = (list.groupMemberships ?? []).find(m =>
-                idsAreEqual(m.channelId, ctx.channelId),
-            );
-            result.push({
-                priceList: list,
-                group: membership?.group ?? null,
-                cells: cellsByList.get(String(listId))!,
-            });
-        }
-        return result;
-    }
 
     /**
      * Items are never directly soft-deleted — they're hard-deleted on

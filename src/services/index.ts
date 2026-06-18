@@ -18,8 +18,7 @@ export type {
   PriceListVariantSummary,
   PriceListVariantSummaryCell,
   SavePriceListVariantPivotInput,
-  UpdatePriceListItemInput,
-  VariantPriceListAssociation
+  UpdatePriceListItemInput
 } from './price-list-item.service';
 export { PriceListSimulationService } from './price-list-simulation.service';
 export type {

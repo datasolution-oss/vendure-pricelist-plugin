@@ -147,6 +147,13 @@ function withDefaults(options: PluginInitOptions): PluginInitOptions {
       nullable: true,
       eager: false,
       public: false,
+      // Hidden from the API + dashboard: the channel's default group is
+      // managed through the dedicated `setDefaultPriceListGroup` mutation /
+      // `priceListDefaultGroup` query and the pricelist UI, not as a raw
+      // relation field on the Channel detail page. `internal` only affects
+      // GraphQL exposure — the DB column is unchanged (no migration) and the
+      // value is still read server-side via the entity relation.
+      internal: true,
       label: [{ languageCode: LanguageCode.en, value: 'Default price list group' }],
       description: [
         {
