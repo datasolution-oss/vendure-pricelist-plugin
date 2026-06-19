@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 
 import { ChannelCodeLabel } from '@/vdb/index';
 import { GroupMembershipRow } from '../components/group-membership-row';
+import { InaccessibleBanner } from '../components/inaccessible-banner';
 import { PriceListAccessBlock } from '../components/price-list-access-block';
 import { PriceListItemsGrid } from '../components/price-list-items-grid';
 import { ReadOnlyBanner } from '../components/read-only-banner';
@@ -43,7 +44,12 @@ import {
     restorePriceListMutation,
     updatePriceListMutation,
 } from '../gql/mutations';
-import { priceListChannelAccessQuery, priceListDetailQuery } from '../gql/queries';
+import {
+    priceListAssignedCustomerGroupsQuery,
+    priceListAssignedCustomersQuery,
+    priceListChannelAccessQuery,
+    priceListDetailQuery,
+} from '../gql/queries';
 import type { PriceListDetailResult } from '../gql/types';
 import { useIsEditable } from '../hooks/use-is-editable';
 
@@ -89,6 +95,40 @@ export function PriceListDetailPage() {
     });
     const assignedToEveryone =
         accessData?.priceListChannelAccess?.assignedToEveryone ?? false;
+
+    // Audience counts for the active channel, used only to detect the
+    // "reaches nobody" state for the banner. `take: 0` returns just the
+    // totalItems — no rows fetched. Skipped while "available to everyone"
+    // is on, since that alone makes the audience non-empty.
+    const audienceCountOptions = { skip: 0, take: 0 } as const;
+    const { data: assignedCustomersData } = useQuery({
+        queryKey: ['pricelist-customers', id, activeChannelId, 'count'],
+        queryFn: () =>
+            api.query(priceListAssignedCustomersQuery, {
+                priceListId: id!,
+                channelId: activeChannelId!,
+                options: audienceCountOptions,
+            } as any) as Promise<{
+                priceListAssignedCustomers: { totalItems: number };
+            }>,
+        enabled: !!id && !!activeChannelId && !assignedToEveryone,
+    });
+    const { data: assignedGroupsData } = useQuery({
+        queryKey: ['pricelist-customer-groups', id, activeChannelId, 'count'],
+        queryFn: () =>
+            api.query(priceListAssignedCustomerGroupsQuery, {
+                priceListId: id!,
+                channelId: activeChannelId!,
+                options: audienceCountOptions,
+            } as any) as Promise<{
+                priceListAssignedCustomerGroups: { totalItems: number };
+            }>,
+        enabled: !!id && !!activeChannelId && !assignedToEveryone,
+    });
+    const assignedCustomerCount =
+        assignedCustomersData?.priceListAssignedCustomers.totalItems ?? 0;
+    const assignedGroupCount =
+        assignedGroupsData?.priceListAssignedCustomerGroups.totalItems ?? 0;
 
     // Editable form draft, hydrated from the loaded entity.
     const [code, setCode] = useState('');
@@ -197,11 +237,21 @@ export function PriceListDetailPage() {
     const sharedChannels = pl.channels.filter(c => c.id !== pl.originChannel.id);
     const isPendingDeletion = !!pl.deletedAt;
 
+    // "Reaches nobody" detection for the informative banner. Two independent
+    // reasons: the list is disabled (global), or on the active channel it has
+    // no audience at all (not available to everyone + no customers/groups).
+    // `enabled` is the live form value so the banner reacts to the toggle
+    // before saving. Suppressed while pending deletion (its own banner shows).
+    const hasNoAudience =
+        !assignedToEveryone && assignedCustomerCount === 0 && assignedGroupCount === 0;
+    const isInaccessible = !isPendingDeletion && (!enabled || hasNoAudience);
+
     return (
         <Page pageId="pricelist-detail">
             <PageTitle>{pl.name}</PageTitle>
 
             {!isEditable && <ReadOnlyBanner originChannelCode={pl.originChannel.code} />}
+
 
             {isPendingDeletion && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm">
@@ -265,6 +315,14 @@ export function PriceListDetailPage() {
             </PageActionBar>
 
             <PageLayout>
+                <PageBlock column="side" blockId="pricelist-status" title="Status" >
+                    {
+                        !isInaccessible && <Badge className='bg-success/10 text-success dark:bg-success/20 [a]:hover:bg-success/20'>{t`Enabled`}</Badge>
+                    }
+                    {isInaccessible && (
+                        <InaccessibleBanner isDisabled={!enabled} hasNoAudience={hasNoAudience} />
+                    )}
+                </PageBlock>
                 {/*
                   PageBlock already renders its own Card+CardHeader+CardContent
                   (with optional title/description props). Earlier code wrapped
