@@ -23,6 +23,8 @@ import { toast } from 'sonner';
 import { createPriceListMutation } from '../gql/mutations';
 import type { PriceListValueType } from '../gql/types';
 
+import { TimezoneSelect } from './timezone-select';
+
 /**
  * Minimal "New PriceList" form. The full edit surface lives on the
  * detail page; here we collect just the required fields so the list can
@@ -33,9 +35,8 @@ import type { PriceListValueType } from '../gql/types';
  * `value` is interpreted, and cannot be safely flipped later without
  * re-deriving every row.
  *
- * Timezone selection is intentionally NOT collected here — held back at
- * the PO's direction (Stage 1D). The server applies a UTC default; the
- * picker can be re-introduced when Stage-2 lookup consumes the field.
+ * Timezone defaults to UTC and is collected here too — it's the zone the
+ * `startDate`/`endDate` window (set on the detail page) is interpreted in.
  *
  * The translation row submitted uses the dashboard's active content
  * language (the language picker in the top bar), so "Name" is the name
@@ -51,6 +52,7 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [valueType, setValueType] = useState<PriceListValueType>('ABSOLUTE');
+  const [timezone, setTimezone] = useState('UTC');
 
   // Base UI's <SelectValue> renders the raw selected value unless the root is
   // given an `items` map (value -> label); single-sourced here so the trigger
@@ -66,6 +68,7 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
         input: {
           code,
           valueType,
+          timezone,
           translations: [{ languageCode: contentLanguage, name }]
         }
       } as any) as Promise<{ createPriceList: { id: string } }>,
@@ -148,6 +151,11 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">{t`Cannot be changed after creation.`}</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="new-pl-timezone">{t`Timezone`}</Label>
+            <TimezoneSelect id="new-pl-timezone" value={timezone} onChange={setTimezone} />
+            <p className="text-xs text-muted-foreground">{t`Zone the validity dates are interpreted in. Editable later.`}</p>
           </div>
         </div>
 

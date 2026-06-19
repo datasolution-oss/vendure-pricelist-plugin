@@ -55,7 +55,7 @@ msgstr "Gruppen"
 msgid "Pricelist Group"
 msgstr "Preislistengruppe"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:264
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:299
 msgid ". Restore it to cancel."
 msgstr ". Stellen Sie sie wieder her, um abzubrechen."
 
@@ -158,13 +158,13 @@ msgstr "Massenwiederherstellung fehlgeschlagen"
 
 #: src/plugins/pricelist/dashboard/components/add-price-list-item-dialog.tsx:284
 #: src/plugins/pricelist/dashboard/components/add-variant-to-pricelist-dialog.tsx:264
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:156
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:164
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:115
 #: src/plugins/pricelist/dashboard/components/share-to-channel-dialog.tsx:227
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:150
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:153
 msgid "Cannot be changed after creation."
 msgstr "Kann nach der Erstellung nicht geändert werden."
 
@@ -172,11 +172,11 @@ msgstr "Kann nach der Erstellung nicht geändert werden."
 msgid "Catalog price:"
 msgstr "Katalogpreis:"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:427
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:485
 msgid "Channel"
 msgstr "Kanal"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:417
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:475
 msgid "Channel memberships"
 msgstr "Kanalmitgliedschaften"
 
@@ -189,9 +189,9 @@ msgstr "Kanäle"
 msgid "Clear"
 msgstr "Leeren"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:115
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:118
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:85
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:336
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:371
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:154
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:252
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:65
@@ -199,12 +199,12 @@ msgstr "Leeren"
 msgid "Code"
 msgstr "Code"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:159
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:167
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:121
 msgid "Create"
 msgstr "Erstellen"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:109
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:112
 msgid "Create a pricelist on the active channel. Items, customer access, and additional translations can be added on the detail page."
 msgstr "Erstellen Sie eine Preisliste auf dem aktiven Kanal. Positionen, Kundenzugriff und zusätzliche Übersetzungen können auf der Detailseite hinzugefügt werden."
 
@@ -222,7 +222,7 @@ msgstr "Währung"
 msgid "Customer"
 msgstr "Kunde"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:486
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:544
 msgid "Customer access"
 msgstr "Kundenzugriff"
 
@@ -251,12 +251,12 @@ msgstr "Standard für aktiven Kanal"
 
 #: src/plugins/pricelist/dashboard/components/delete-price-list-bulk-action.tsx:70
 #: src/plugins/pricelist/dashboard/components/delete-price-list-bulk-action.tsx:197
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:297
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:302
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:332
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:337
 msgid "Delete"
 msgstr "Löschen"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:295
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:330
 msgid "Delete this pricelist?"
 msgstr "Diese Preisliste löschen?"
 
@@ -272,7 +272,7 @@ msgstr "{succeeded} Preislisten gelöscht"
 msgid "Deleted at"
 msgstr "Gelöscht am"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:359
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:394
 msgid "Description"
 msgstr "Beschreibung"
 
@@ -305,11 +305,11 @@ msgstr "z. B. promo"
 msgid "e.g. Promotional"
 msgstr "z. B. Aktion"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:129
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:132
 msgid "e.g. Standard EUR Pricelist"
 msgstr "z. B. Standard-EUR-Preisliste"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:120
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:123
 msgid "e.g. STANDARD-EUR"
 msgstr "z. B. STANDARD-EUR"
 
@@ -317,14 +317,14 @@ msgstr "z. B. STANDARD-EUR"
 msgid "Edit"
 msgstr "Bearbeiten"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:320
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:385
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:355
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:420
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:256
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:102
 msgid "Enabled"
 msgstr "Aktiviert"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:400
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:450
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:118
 msgid "Ends"
 msgstr "Endet"
@@ -353,11 +353,11 @@ msgstr "Gruppe konnte nicht geändert werden"
 msgid "Failed to create group"
 msgstr "Gruppe konnte nicht erstellt werden"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:89
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:92
 msgid "Failed to create pricelist"
 msgstr "Preisliste konnte nicht erstellt werden"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:192
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:227
 msgid "Failed to delete"
 msgstr "Löschen fehlgeschlagen"
 
@@ -373,7 +373,7 @@ msgstr "{failed} Preislisten konnten nicht gelöscht werden"
 msgid "Failed to load group."
 msgstr "Gruppe konnte nicht geladen werden."
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:230
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:265
 msgid "Failed to load pricelist."
 msgstr "Preisliste konnte nicht geladen werden."
 
@@ -389,7 +389,7 @@ msgstr "Kunde konnte nicht entfernt werden"
 msgid "Failed to remove customer group"
 msgstr "Kundengruppe konnte nicht entfernt werden"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:220
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:255
 msgid "Failed to restore"
 msgstr "Wiederherstellung fehlgeschlagen"
 
@@ -397,7 +397,7 @@ msgstr "Wiederherstellung fehlgeschlagen"
 msgid "Failed to restore {failed} pricelists"
 msgstr "{failed} Preislisten konnten nicht wiederhergestellt werden"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:179
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:214
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:113
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:171
 msgid "Failed to save"
@@ -407,7 +407,7 @@ msgstr "Speichern fehlgeschlagen"
 msgid "Failed to share — check the target channel and group."
 msgstr "Freigabe fehlgeschlagen — prüfen Sie den Zielkanal und die Gruppe."
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:208
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:243
 msgid "Failed to stop sharing"
 msgstr "Freigabe konnte nicht beendet werden"
 
@@ -415,8 +415,8 @@ msgstr "Freigabe konnte nicht beendet werden"
 msgid "Failed to update"
 msgstr "Aktualisierung fehlgeschlagen"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:59
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:378
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:61
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:413
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:297
 msgid "Fixed prices"
 msgstr "Festpreise"
@@ -426,7 +426,7 @@ msgid "gross"
 msgstr "brutto"
 
 #: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:249
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:428
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:486
 msgid "Group"
 msgstr "Gruppe"
 
@@ -454,7 +454,7 @@ msgstr "Sie ist deaktiviert — aktivieren Sie sie, damit ihre Preise gelten."
 msgid "Item added"
 msgstr "Position hinzugefügt"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:473
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:531
 msgid "Items"
 msgstr "Positionen"
 
@@ -465,14 +465,14 @@ msgstr "Zuletzt aktualisiert"
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:283
 #: src/plugins/pricelist/dashboard/components/price-list-access-block.tsx:409
 #: src/plugins/pricelist/dashboard/components/share-to-channel-dialog.tsx:184
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:225
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:260
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:118
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:237
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:189
 msgid "Loading…"
 msgstr "Wird geladen…"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:381
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:416
 msgid "Locked once created."
 msgstr "Nach der Erstellung gesperrt."
 
@@ -486,10 +486,10 @@ msgstr "Mindestmenge"
 msgid "n/a"
 msgstr "k. A."
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:124
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:127
 #: src/plugins/pricelist/dashboard/components/create-price-list-group-dialog.tsx:94
 #: src/plugins/pricelist/dashboard/components/variant-pricelist-block.tsx:197
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:352
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:387
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:166
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:253
 #: src/plugins/pricelist/dashboard/pages/price-list-group-list.tsx:79
@@ -509,11 +509,11 @@ msgstr "Neue Gruppe"
 msgid "New Group"
 msgstr "Neue Gruppe"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:107
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:110
 msgid "New pricelist"
 msgstr "Neue Preisliste"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:101
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:104
 msgid "New Pricelist"
 msgstr "Neue Preisliste"
 
@@ -571,7 +571,7 @@ msgstr "Noch keine Preise. Fügen Sie eine Währung hinzu, um zu beginnen."
 msgid "No tiers — add one below."
 msgstr "Keine Staffeln — fügen Sie unten eine hinzu."
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:421
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:479
 msgid "Not bound to any channel/group yet."
 msgstr "Noch keinem Kanal/keiner Gruppe zugeordnet."
 
@@ -587,7 +587,7 @@ msgstr "Ein Block pro Währung. Jede Staffel gilt ab ihrer „Mindestmenge“ au
 msgid "origin"
 msgstr "Ursprung"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:408
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:466
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:255
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:136
 msgid "Origin channel"
@@ -603,8 +603,8 @@ msgstr "Löschung ausstehend"
 msgid "Percentage"
 msgstr "Prozentsatz"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:60
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:377
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:62
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:412
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:296
 msgid "Percentage discounts"
 msgstr "Prozentuale Rabatte"
@@ -641,11 +641,11 @@ msgstr "Preissimulator"
 msgid "Pricelist"
 msgstr "Preisliste"
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:73
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:76
 msgid "Pricelist created"
 msgstr "Preisliste erstellt"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:186
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:221
 msgid "Pricelist deleted"
 msgstr "Preisliste gelöscht"
 
@@ -657,11 +657,11 @@ msgstr "Preislistengruppen"
 msgid "Pricelist item"
 msgstr "Preislistenposition"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:234
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:269
 msgid "PriceList not found."
 msgstr "Preisliste nicht gefunden."
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:215
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:250
 msgid "Pricelist restored"
 msgstr "Preisliste wiederhergestellt"
 
@@ -742,7 +742,7 @@ msgid "Resolved price"
 msgstr "Ermittelter Preis"
 
 #: src/plugins/pricelist/dashboard/components/delete-price-list-bulk-action.tsx:123
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:285
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:320
 msgid "Restore"
 msgstr "Wiederherstellen"
 
@@ -755,13 +755,13 @@ msgstr "{0} Preislisten wiederherstellen?"
 msgid "Restored {succeeded} pricelists"
 msgstr "{succeeded} Preislisten wiederhergestellt"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:310
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:345
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:142
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:278
 msgid "Save"
 msgstr "Speichern"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:174
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:209
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:108
 #: src/plugins/pricelist/dashboard/pages/price-list-item-detail.tsx:161
 msgid "Saved"
@@ -835,7 +835,7 @@ msgstr "Standardgruppe übersprungen (kann nicht gelöscht werden)."
 msgid "Standard price"
 msgstr "Standardpreis"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:392
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:434
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:109
 msgid "Starts"
 msgstr "Beginnt"
@@ -853,11 +853,11 @@ msgstr "Freigabe beenden"
 msgid "Stop sharing on this channel?"
 msgstr "Freigabe auf diesem Kanal beenden?"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:203
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:238
 msgid "Stopped sharing"
 msgstr "Freigabe beendet"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:334
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:369
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:152
 msgid "Summary"
 msgstr "Zusammenfassung"
@@ -878,7 +878,7 @@ msgstr "Die Kombination aus Variante + Währung + Staffelmenge muss innerhalb de
 msgid "The default group cannot be deleted."
 msgstr "Die Standardgruppe kann nicht gelöscht werden."
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:296
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:331
 msgid "The pricelist will be marked for deletion and hidden from the list. A scheduled task purges it definitively after a grace period (default 1h). Enable \"Show pending deletion\" on the list page during that window to restore."
 msgstr "Die Preisliste wird zum Löschen markiert und aus der Liste ausgeblendet. Eine geplante Aufgabe löscht sie nach einer Schonfrist (Standard 1 Std.) endgültig. Aktivieren Sie in diesem Zeitraum „Ausstehende Löschungen anzeigen“ auf der Listenseite, um sie wiederherzustellen."
 
@@ -894,11 +894,11 @@ msgstr "Diese Preisliste ist bereits für diesen Kanal freigegeben."
 msgid "This pricelist is not reachable by any customer"
 msgstr "Diese Preisliste ist für keinen Kunden erreichbar"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:260
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:295
 msgid "This pricelist is pending deletion. It will be permanently purged on"
 msgstr "Diese Preisliste wartet auf Löschung. Sie wird endgültig gelöscht am"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:267
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:302
 msgid "This pricelist is pending deletion. Restore it to cancel."
 msgstr "Diese Preisliste wartet auf Löschung. Stellen Sie sie wieder her, um abzubrechen."
 
@@ -913,6 +913,11 @@ msgstr "Diese Variante ist bereits in jeder Preisliste dieses Kanals enthalten."
 #: src/plugins/pricelist/dashboard/components/price-list-items-grid.tsx:218
 msgid "Tiers"
 msgstr "Staffeln"
+
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:156
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:427
+msgid "Timezone"
+msgstr ""
 
 #: src/plugins/pricelist/dashboard/components/percentage-input.tsx:93
 msgid "Two stacked −10% lines compound to −19%, not −20%."
@@ -934,12 +939,12 @@ msgstr "Tippen, um eine Gruppe zu suchen."
 msgid "Updated"
 msgstr "Aktualisiert"
 
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:468
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:526
 msgid "Use \"Share to channel\" above to make this pricelist available on other channels."
 msgstr "Verwenden Sie oben „Für Kanal freigeben“, um diese Preisliste auf anderen Kanälen verfügbar zu machen."
 
-#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:133
-#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:367
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:136
+#: src/plugins/pricelist/dashboard/pages/price-list-detail.tsx:402
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:254
 #: src/plugins/pricelist/dashboard/pages/price-list-list.tsx:83
 msgid "Value type"
@@ -961,3 +966,7 @@ msgstr "Wenn aktiviert, gilt diese Preisliste für alle Kunden, unabhängig von 
 #: src/plugins/pricelist/dashboard/pages/price-list-group-detail.tsx:183
 msgid "Yes"
 msgstr "Ja"
+
+#: src/plugins/pricelist/dashboard/components/create-price-list-dialog.tsx:158
+msgid "Zone the validity dates are interpreted in. Editable later."
+msgstr ""

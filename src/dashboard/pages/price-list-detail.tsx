@@ -38,6 +38,8 @@ import { PriceListAccessBlock } from '../components/price-list-access-block';
 import { PriceListItemsGrid } from '../components/price-list-items-grid';
 import { ReadOnlyBanner } from '../components/read-only-banner';
 import { ShareToChannelDialog } from '../components/share-to-channel-dialog';
+import { TimezoneSelect } from '../components/timezone-select';
+import { utcIsoToZonedWallClock, zonedWallClockToUtcIso } from '../util/zoned-time';
 import {
     deletePriceListMutation,
     removePriceListFromChannelMutation,
@@ -133,8 +135,14 @@ export function PriceListDetailPage() {
     // Editable form draft, hydrated from the loaded entity.
     const [code, setCode] = useState('');
     const [enabled, setEnabled] = useState(true);
+    // Date (YYYY-MM-DD) and time (HH:mm) are held separately and edited as a
+    // wall-clock in the list's `timezone`. The time defaults to 00:00 on save
+    // when left blank. Stored as absolute UTC instants (converted via the tz).
+    const [timezone, setTimezone] = useState<string>('UTC');
     const [startDate, setStartDate] = useState<string>('');
+    const [startTime, setStartTime] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
+    const [endTime, setEndTime] = useState<string>('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
 
@@ -142,8 +150,26 @@ export function PriceListDetailPage() {
         if (!pl) return;
         setCode(pl.code);
         setEnabled(pl.enabled);
-        setStartDate(pl.startDate ? pl.startDate.slice(0, 16) : '');
-        setEndDate(pl.endDate ? pl.endDate.slice(0, 16) : '');
+        // Bounds are stored as absolute UTC instants — show them as a
+        // wall-clock in the list's timezone.
+        const tz = pl.timezone || 'UTC';
+        setTimezone(tz);
+        if (pl.startDate) {
+            const w = utcIsoToZonedWallClock(pl.startDate, tz);
+            setStartDate(w.date);
+            setStartTime(w.time);
+        } else {
+            setStartDate('');
+            setStartTime('');
+        }
+        if (pl.endDate) {
+            const w = utcIsoToZonedWallClock(pl.endDate, tz);
+            setEndDate(w.date);
+            setEndTime(w.time);
+        } else {
+            setEndDate('');
+            setEndTime('');
+        }
         // Prefer a translation matching the active content language, falling
         // back to the value already resolved by the server's translator
         // (handles "no translation row yet for this language" gracefully).
@@ -159,8 +185,17 @@ export function PriceListDetailPage() {
                     id: pl!.id,
                     code,
                     enabled,
-                    startDate: startDate ? new Date(startDate).toISOString() : null,
-                    endDate: endDate ? new Date(endDate).toISOString() : null,
+                    timezone,
+                    // Interpret the wall-clock in the list's timezone and store
+                    // an absolute UTC instant. Time defaults to 00:00 when the
+                    // hour is left blank (otherwise a bare date produced an
+                    // empty value → null → a "future" list looked always-active).
+                    startDate: startDate
+                        ? zonedWallClockToUtcIso(startDate, startTime || '00:00', timezone)
+                        : null,
+                    endDate: endDate
+                        ? zonedWallClockToUtcIso(endDate, endTime || '00:00', timezone)
+                        : null,
                     translations: [
                         {
                             languageCode: contentLanguage,
@@ -389,21 +424,44 @@ export function PriceListDetailPage() {
                                 disabled={!isEditable}
                             />
                         </FormRow>
-                        <FormRow label={t`Starts`}>
-                            <Input
-                                type="datetime-local"
-                                value={startDate}
-                                onChange={e => setStartDate(e.target.value)}
+                        <FormRow label={t`Timezone`}>
+                            <TimezoneSelect
+                                value={timezone}
+                                onChange={setTimezone}
                                 disabled={!isEditable}
                             />
                         </FormRow>
+                        <FormRow label={t`Starts`}>
+                            <div className="flex gap-2">
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={e => setStartDate(e.target.value)}
+                                    disabled={!isEditable}
+                                />
+                                <Input
+                                    type="time"
+                                    value={startTime}
+                                    onChange={e => setStartTime(e.target.value)}
+                                    disabled={!isEditable || !startDate}
+                                />
+                            </div>
+                        </FormRow>
                         <FormRow label={t`Ends`}>
-                            <Input
-                                type="datetime-local"
-                                value={endDate}
-                                onChange={e => setEndDate(e.target.value)}
-                                disabled={!isEditable}
-                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={e => setEndDate(e.target.value)}
+                                    disabled={!isEditable}
+                                />
+                                <Input
+                                    type="time"
+                                    value={endTime}
+                                    onChange={e => setEndTime(e.target.value)}
+                                    disabled={!isEditable || !endDate}
+                                />
+                            </div>
                         </FormRow>
                         <FormRow label={t`Origin channel`}>
                             <code className="text-sm"><ChannelCodeLabel code={pl.originChannel.code} /></code>
