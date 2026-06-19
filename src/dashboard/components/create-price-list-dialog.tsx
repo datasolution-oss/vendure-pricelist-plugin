@@ -50,7 +50,6 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
-  const [priority, setPriority] = useState(0);
   const [valueType, setValueType] = useState<PriceListValueType>('ABSOLUTE');
 
   // Base UI's <SelectValue> renders the raw selected value unless the root is
@@ -58,7 +57,7 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
   // label and the dropdown options can't drift.
   const valueTypeLabels: Record<PriceListValueType, string> = {
     ABSOLUTE: t`Fixed prices`,
-    PERCENTAGE: t`Percentage discounts`,
+    PERCENTAGE: t`Percentage discounts`
   };
 
   const mutation = useMutation({
@@ -67,7 +66,6 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
         input: {
           code,
           valueType,
-          priority,
           translations: [{ languageCode: contentLanguage, name }]
         }
       } as any) as Promise<{ createPriceList: { id: string } }>,
@@ -81,7 +79,6 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
       setOpen(false);
       setCode('');
       setName('');
-      setPriority(0);
       const newId = data?.createPriceList?.id;
       if (newId) {
         navigate({ to: '/pricelists/$id', params: { id: newId } });
@@ -151,15 +148,6 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">{t`Cannot be changed after creation.`}</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="new-pl-priority">{t`Priority`}</Label>
-            <Input
-              id="new-pl-priority"
-              type="number"
-              value={priority}
-              onChange={e => setPriority(parseInt(e.target.value, 10) || 0)}
-            />
           </div>
         </div>
 

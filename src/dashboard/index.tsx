@@ -1,6 +1,7 @@
 import { defineDashboardExtension } from '@vendure/dashboard';
 import { Currency } from 'lucide-react';
 
+import { Trans } from '@lingui/react/macro';
 import { PriceListDetailPage } from './pages/price-list-detail';
 import { PriceListGroupDetailPage } from './pages/price-list-group-detail';
 import { PriceListGroupListPage } from './pages/price-list-group-list';
@@ -97,7 +98,7 @@ defineDashboardExtension({
   pageBlocks: [
     {
       id: 'pricelist-variant-pricing',
-      title: /* i18n */ 'Pricelists & simulator',
+      title: <Trans>Pricelists & simulator</Trans>,
       location: {
         pageId: 'product-variant-detail',
         position: { blockId: 'price-and-tax', order: 'after' },
