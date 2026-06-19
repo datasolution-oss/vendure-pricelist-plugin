@@ -241,6 +241,8 @@ export const adminApiExtensions = gql`
         "Mutually exclusive with customerGroupId. Omit both for anonymous."
         customerId: ID
         customerGroupId: ID
+        "Preview the cascade at this instant instead of now (bypasses the resolution cache)."
+        at: DateTime
     }
 
     type SimulatedProvenanceEntry {
