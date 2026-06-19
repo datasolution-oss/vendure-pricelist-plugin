@@ -8,7 +8,6 @@ export const priceListsListQuery = graphql(/* GraphQL */ `
         code
         name
         valueType
-        priority
         enabled
         startDate
         endDate
@@ -45,7 +44,6 @@ export const priceListDetailQuery = graphql(/* GraphQL */ `
       description
       valueType
       timezone
-      priority
       enabled
       startDate
       endDate
@@ -311,6 +309,66 @@ export const priceListGroupDetailQuery = graphql(/* GraphQL */ `
       }
       createdAt
       updatedAt
+    }
+  }
+`);
+
+export const priceListsForVariantQuery = graphql(/* GraphQL */ `
+  query GetPriceListsForVariant($productVariantId: ID!, $options: PriceListListOptions) {
+    priceListsForVariant(productVariantId: $productVariantId, options: $options) {
+      items {
+        id
+        name
+        valueType
+      }
+      totalItems
+    }
+  }
+`);
+
+export const simulatorCustomersQuery = graphql(/* GraphQL */ `
+  query SimulatorCustomers($options: CustomerListOptions) {
+    customers(options: $options) {
+      items {
+        id
+        firstName
+        lastName
+        emailAddress
+      }
+      totalItems
+    }
+  }
+`);
+
+export const simulatorCustomerGroupsQuery = graphql(/* GraphQL */ `
+  query SimulatorCustomerGroups($options: CustomerGroupListOptions) {
+    customerGroups(options: $options) {
+      items {
+        id
+        name
+      }
+      totalItems
+    }
+  }
+`);
+
+export const simulateVariantPriceQuery = graphql(/* GraphQL */ `
+  query SimulateVariantPrice($input: SimulateVariantPriceInput!) {
+    simulateVariantPrice(input: $input) {
+      standardPrice
+      standardPriceWithTax
+      resolvedPrice
+      resolvedPriceWithTax
+      currencyCode
+      source
+      provenance {
+        listId
+        listCode
+        groupCode
+        valueType
+        stepQuantity
+        value
+      }
     }
   }
 `);

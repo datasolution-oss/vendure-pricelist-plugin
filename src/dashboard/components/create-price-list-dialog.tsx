@@ -23,6 +23,8 @@ import { toast } from 'sonner';
 import { createPriceListMutation } from '../gql/mutations';
 import type { PriceListValueType } from '../gql/types';
 
+import { TimezoneSelect } from './timezone-select';
+
 /**
  * Minimal "New PriceList" form. The full edit surface lives on the
  * detail page; here we collect just the required fields so the list can
@@ -33,9 +35,9 @@ import type { PriceListValueType } from '../gql/types';
  * `value` is interpreted, and cannot be safely flipped later without
  * re-deriving every row.
  *
- * Timezone selection is intentionally NOT collected here — held back at
- * the PO's direction (Stage 1D). The server applies a UTC default; the
- * picker can be re-introduced when Stage-2 lookup consumes the field.
+ * Timezone defaults to the browser's detected zone (falling back to UTC)
+ * and is collected here too — it's the zone the `startDate`/`endDate`
+ * window (set on the detail page) is interpreted in.
  *
  * The translation row submitted uses the dashboard's active content
  * language (the language picker in the top bar), so "Name" is the name
@@ -50,15 +52,21 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
-  const [priority, setPriority] = useState(0);
   const [valueType, setValueType] = useState<PriceListValueType>('ABSOLUTE');
+  const [timezone, setTimezone] = useState(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch {
+      return 'UTC';
+    }
+  });
 
   // Base UI's <SelectValue> renders the raw selected value unless the root is
   // given an `items` map (value -> label); single-sourced here so the trigger
   // label and the dropdown options can't drift.
   const valueTypeLabels: Record<PriceListValueType, string> = {
     ABSOLUTE: t`Fixed prices`,
-    PERCENTAGE: t`Percentage discounts`,
+    PERCENTAGE: t`Percentage discounts`
   };
 
   const mutation = useMutation({
@@ -67,7 +75,7 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
         input: {
           code,
           valueType,
-          priority,
+          timezone,
           translations: [{ languageCode: contentLanguage, name }]
         }
       } as any) as Promise<{ createPriceList: { id: string } }>,
@@ -81,7 +89,6 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
       setOpen(false);
       setCode('');
       setName('');
-      setPriority(0);
       const newId = data?.createPriceList?.id;
       if (newId) {
         navigate({ to: '/pricelists/$id', params: { id: newId } });
@@ -153,13 +160,9 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
             <p className="text-xs text-muted-foreground">{t`Cannot be changed after creation.`}</p>
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="new-pl-priority">{t`Priority`}</Label>
-            <Input
-              id="new-pl-priority"
-              type="number"
-              value={priority}
-              onChange={e => setPriority(parseInt(e.target.value, 10) || 0)}
-            />
+            <Label htmlFor="new-pl-timezone">{t`Timezone`}</Label>
+            <TimezoneSelect id="new-pl-timezone" value={timezone} onChange={setTimezone} />
+            <p className="text-xs text-muted-foreground">{t`Zone the validity dates are interpreted in. Editable later.`}</p>
           </div>
         </div>
 

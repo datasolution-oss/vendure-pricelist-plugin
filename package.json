@@ -1,6 +1,6 @@
 {
   "name": "@datasolution/vendure-plugin-pricelist",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "Pricelist plugin for Vendure",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "build": "rimraf lib && tsc -p ./tsconfig.build.json && cp -r src/dashboard lib/src/dashboard",
-    "e2e": "cross-env PACKAGE=pricelist vitest --config e2e-common/vitest.config.mts --run"
+    "e2e": "mkdir -p e2e/__data__ && cross-env PACKAGE=pricelist vitest --config e2e-common/vitest.config.mts --run"
   },
   "peerDependencies": {
     "@vendure/core": "^3.6.0",

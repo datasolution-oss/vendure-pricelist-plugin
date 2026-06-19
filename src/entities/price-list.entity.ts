@@ -67,11 +67,12 @@ export class PriceList
     valueType: PriceListValueType;
 
     /**
-     * IANA timezone name (e.g. `Europe/Paris`). The `startDate`/`endDate`
-     * validity window is interpreted in this timezone. Stage 2 lookup
-     * converts the merchandiser-set bounds against this zone when
-     * comparing to "now". Required — defaults to `UTC` at insert time but
-     * the dashboard always asks for a value.
+     * IANA timezone name (e.g. `Europe/Paris`) the merchandiser set the
+     * validity window in. `startDate`/`endDate` are stored as absolute UTC
+     * instants — the dashboard converts the entered wall-clock from this
+     * zone to UTC on save and back for display — so the lookup validity
+     * check stays a plain UTC comparison (no timezone math on the hot path).
+     * This field records the zone for round-trip editing. Defaults to `UTC`.
      */
     @Column({ type: 'varchar', length: 64, default: 'UTC' })
     timezone: string;
@@ -81,9 +82,6 @@ export class PriceList
 
     @Column({ type: Date, nullable: true })
     endDate: Date | null;
-
-    @Column({ default: 0 })
-    priority: number;
 
     @Column({ default: true })
     enabled: boolean;

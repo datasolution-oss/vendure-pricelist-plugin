@@ -13,7 +13,6 @@ export interface PriceListListItem {
     name: string;
     valueType: PriceListValueType;
     timezone: string;
-    priority: number;
     enabled: boolean;
     startDate: string | null;
     endDate: string | null;

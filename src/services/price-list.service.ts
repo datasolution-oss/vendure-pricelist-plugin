@@ -52,7 +52,6 @@ export interface CreatePriceListInput {
     timezone?: string;
     startDate?: Date | null;
     endDate?: Date | null;
-    priority: number;
     enabled?: boolean;
     groupId?: ID;
     translations: PriceListTranslationInput[];
@@ -68,7 +67,6 @@ export interface UpdatePriceListInput {
     timezone?: string;
     startDate?: Date | null;
     endDate?: Date | null;
-    priority?: number;
     enabled?: boolean;
     translations?: PriceListTranslationInput[];
 }
@@ -112,6 +110,38 @@ export class PriceListService {
                 ctx,
                 channelId: ctx.channelId,
             })
+            .getManyAndCount()
+            .then(([items, totalItems]) => ({
+                items: items.map(pl => this.translatePriceList(pl, ctx)),
+                totalItems,
+            }));
+    }
+
+    /**
+     * Paginated lists (visible on the active channel) that contain an item
+     * for the given variant. Backs the "associated pricelists" table on the
+     * variant detail page. The variant→list membership is expressed as an
+     * EXISTS sub-select on `price_list_item` (no row multiplication, no extra
+     * join), composed onto the standard channel-scoped ListQueryBuilder.
+     */
+    findAllForVariant(
+        ctx: RequestContext,
+        productVariantId: ID,
+        options?: ListQueryOptions<PriceList>,
+    ): Promise<PaginatedList<PriceList>> {
+        const qb = this.listQueryBuilder.build(PriceList, options, {
+            relations: ['translations'],
+            where: { deletedAt: IsNull() },
+            ctx,
+            channelId: ctx.channelId,
+        });
+        qb.andWhere(
+            `EXISTS (SELECT 1 FROM "price_list_item" "pli" ` +
+                `WHERE "pli"."priceListId" = "${qb.alias}"."id" ` +
+                `AND "pli"."productVariantId" = :pvId)`,
+            { pvId: productVariantId },
+        );
+        return qb
             .getManyAndCount()
             .then(([items, totalItems]) => ({
                 items: items.map(pl => this.translatePriceList(pl, ctx)),
@@ -198,7 +228,6 @@ export class PriceListService {
                 pl.timezone = input.timezone ?? 'UTC';
                 pl.startDate = input.startDate ?? null;
                 pl.endDate = input.endDate ?? null;
-                pl.priority = input.priority;
                 pl.enabled = input.enabled ?? true;
                 pl.originChannelId = ctx.channelId;
                 pl.channels = [activeChannel];
@@ -224,7 +253,6 @@ export class PriceListService {
 
         if (input.code !== undefined) list.code = input.code;
         if (input.timezone !== undefined) list.timezone = input.timezone;
-        if (input.priority !== undefined) list.priority = input.priority;
         if (input.enabled !== undefined) list.enabled = input.enabled;
         if (input.startDate !== undefined) list.startDate = input.startDate;
         if (input.endDate !== undefined) list.endDate = input.endDate;

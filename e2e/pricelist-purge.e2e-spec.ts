@@ -42,8 +42,12 @@ describe('purgePendingDeletionTask', () => {
                 // Short manualTriggerCheckInterval so a `runScheduledTask`
                 // call is picked up by the strategy within the test's
                 // polling window (default is 10s, which would force a
-                // 10s+ wait per test).
-                DefaultSchedulerPlugin.init({ manualTriggerCheckInterval: '500ms' }),
+                // 10s+ wait per test). Pass a NUMBER (ms) — the option
+                // is typed `string | number` but the strategy hands it
+                // straight to `setInterval` with no parsing, so a string
+                // like '500ms' is coerced to NaN → Node's
+                // `TimeoutNaNWarning`.
+                DefaultSchedulerPlugin.init({ manualTriggerCheckInterval: 500 }),
             ],
         }),
     );
@@ -71,8 +75,7 @@ describe('purgePendingDeletionTask', () => {
             input: {
                 code: 'purge-target',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Purge target' }],
+                                translations: [{ languageCode: 'en', name: 'Purge target' }],
             },
         });
         const listId = String(res.createPriceList.id);

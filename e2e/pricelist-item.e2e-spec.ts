@@ -62,8 +62,7 @@ describe('PriceListItem', () => {
                 input: {
                     code: 'pivot-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
-                    translations: [{ languageCode: 'en', name: 'Pivot list' }],
+                                        translations: [{ languageCode: 'en', name: 'Pivot list' }],
                 },
             });
             listId = String(res.createPriceList.id);
@@ -164,8 +163,7 @@ describe('PriceListItem', () => {
                 input: {
                     code: 'summaries-pagination',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
-                    translations: [{ languageCode: 'en', name: 'Summaries paginated' }],
+                                        translations: [{ languageCode: 'en', name: 'Summaries paginated' }],
                 },
             });
             const otherListId = String(listRes.createPriceList.id);
@@ -278,8 +276,7 @@ describe('PriceListItem', () => {
                 input: {
                     code: 'item-guard-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
-                    translations: [{ languageCode: 'en', name: 'Item guard' }],
+                                        translations: [{ languageCode: 'en', name: 'Item guard' }],
                 },
             });
             listId = String(res.createPriceList.id);
@@ -335,8 +332,7 @@ describe('PriceListItem', () => {
                 input: {
                     code: 'scoping-list',
                     valueType: 'ABSOLUTE',
-                    priority: 1,
-                    translations: [{ languageCode: 'en', name: 'Scoping list' }],
+                                        translations: [{ languageCode: 'en', name: 'Scoping list' }],
                 },
             });
             listId = String(res.createPriceList.id);

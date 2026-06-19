@@ -46,8 +46,7 @@ describe('PriceListChannelAccess', () => {
             input: {
                 code: 'access-list',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Access list' }],
+                                translations: [{ languageCode: 'en', name: 'Access list' }],
             },
         });
         listId = String(res.createPriceList.id);
@@ -237,8 +236,7 @@ describe('PriceListChannelAccess', () => {
             input: {
                 code: 'access-not-shared',
                 valueType: 'ABSOLUTE',
-                priority: 1,
-                translations: [{ languageCode: 'en', name: 'Access not shared' }],
+                                translations: [{ languageCode: 'en', name: 'Access not shared' }],
             },
         });
         const isolatedListId = String(res.createPriceList.id);

@@ -33,17 +33,25 @@ import { toast } from 'sonner';
 
 import { ChannelCodeLabel } from '@/vdb/index';
 import { GroupMembershipRow } from '../components/group-membership-row';
+import { InaccessibleBanner } from '../components/inaccessible-banner';
 import { PriceListAccessBlock } from '../components/price-list-access-block';
 import { PriceListItemsGrid } from '../components/price-list-items-grid';
 import { ReadOnlyBanner } from '../components/read-only-banner';
 import { ShareToChannelDialog } from '../components/share-to-channel-dialog';
+import { TimezoneSelect } from '../components/timezone-select';
+import { utcIsoToZonedWallClock, zonedWallClockToUtcIso } from '../util/zoned-time';
 import {
     deletePriceListMutation,
     removePriceListFromChannelMutation,
     restorePriceListMutation,
     updatePriceListMutation,
 } from '../gql/mutations';
-import { priceListChannelAccessQuery, priceListDetailQuery } from '../gql/queries';
+import {
+    priceListAssignedCustomerGroupsQuery,
+    priceListAssignedCustomersQuery,
+    priceListChannelAccessQuery,
+    priceListDetailQuery,
+} from '../gql/queries';
 import type { PriceListDetailResult } from '../gql/types';
 import { useIsEditable } from '../hooks/use-is-editable';
 
@@ -90,22 +98,78 @@ export function PriceListDetailPage() {
     const assignedToEveryone =
         accessData?.priceListChannelAccess?.assignedToEveryone ?? false;
 
+    // Audience counts for the active channel, used only to detect the
+    // "reaches nobody" state for the banner. `take: 0` returns just the
+    // totalItems — no rows fetched. Skipped while "available to everyone"
+    // is on, since that alone makes the audience non-empty.
+    const audienceCountOptions = { skip: 0, take: 0 } as const;
+    const { data: assignedCustomersData } = useQuery({
+        queryKey: ['pricelist-customers', id, activeChannelId, 'count'],
+        queryFn: () =>
+            api.query(priceListAssignedCustomersQuery, {
+                priceListId: id!,
+                channelId: activeChannelId!,
+                options: audienceCountOptions,
+            } as any) as Promise<{
+                priceListAssignedCustomers: { totalItems: number };
+            }>,
+        enabled: !!id && !!activeChannelId && !assignedToEveryone,
+    });
+    const { data: assignedGroupsData } = useQuery({
+        queryKey: ['pricelist-customer-groups', id, activeChannelId, 'count'],
+        queryFn: () =>
+            api.query(priceListAssignedCustomerGroupsQuery, {
+                priceListId: id!,
+                channelId: activeChannelId!,
+                options: audienceCountOptions,
+            } as any) as Promise<{
+                priceListAssignedCustomerGroups: { totalItems: number };
+            }>,
+        enabled: !!id && !!activeChannelId && !assignedToEveryone,
+    });
+    const assignedCustomerCount =
+        assignedCustomersData?.priceListAssignedCustomers.totalItems ?? 0;
+    const assignedGroupCount =
+        assignedGroupsData?.priceListAssignedCustomerGroups.totalItems ?? 0;
+
     // Editable form draft, hydrated from the loaded entity.
     const [code, setCode] = useState('');
-    const [priority, setPriority] = useState(0);
     const [enabled, setEnabled] = useState(true);
+    // Date (YYYY-MM-DD) and time (HH:mm) are held separately and edited as a
+    // wall-clock in the list's `timezone`. The time defaults to 00:00 on save
+    // when left blank. Stored as absolute UTC instants (converted via the tz).
+    const [timezone, setTimezone] = useState<string>('UTC');
     const [startDate, setStartDate] = useState<string>('');
+    const [startTime, setStartTime] = useState<string>('');
     const [endDate, setEndDate] = useState<string>('');
+    const [endTime, setEndTime] = useState<string>('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
 
     useEffect(() => {
         if (!pl) return;
         setCode(pl.code);
-        setPriority(pl.priority);
         setEnabled(pl.enabled);
-        setStartDate(pl.startDate ? pl.startDate.slice(0, 16) : '');
-        setEndDate(pl.endDate ? pl.endDate.slice(0, 16) : '');
+        // Bounds are stored as absolute UTC instants — show them as a
+        // wall-clock in the list's timezone.
+        const tz = pl.timezone || 'UTC';
+        setTimezone(tz);
+        if (pl.startDate) {
+            const w = utcIsoToZonedWallClock(pl.startDate, tz);
+            setStartDate(w.date);
+            setStartTime(w.time);
+        } else {
+            setStartDate('');
+            setStartTime('');
+        }
+        if (pl.endDate) {
+            const w = utcIsoToZonedWallClock(pl.endDate, tz);
+            setEndDate(w.date);
+            setEndTime(w.time);
+        } else {
+            setEndDate('');
+            setEndTime('');
+        }
         // Prefer a translation matching the active content language, falling
         // back to the value already resolved by the server's translator
         // (handles "no translation row yet for this language" gracefully).
@@ -120,10 +184,18 @@ export function PriceListDetailPage() {
                 input: {
                     id: pl!.id,
                     code,
-                    priority,
                     enabled,
-                    startDate: startDate ? new Date(startDate).toISOString() : null,
-                    endDate: endDate ? new Date(endDate).toISOString() : null,
+                    timezone,
+                    // Interpret the wall-clock in the list's timezone and store
+                    // an absolute UTC instant. Time defaults to 00:00 when the
+                    // hour is left blank (otherwise a bare date produced an
+                    // empty value → null → a "future" list looked always-active).
+                    startDate: startDate
+                        ? zonedWallClockToUtcIso(startDate, startTime || '00:00', timezone)
+                        : null,
+                    endDate: endDate
+                        ? zonedWallClockToUtcIso(endDate, endTime || '00:00', timezone)
+                        : null,
                     translations: [
                         {
                             languageCode: contentLanguage,
@@ -200,11 +272,21 @@ export function PriceListDetailPage() {
     const sharedChannels = pl.channels.filter(c => c.id !== pl.originChannel.id);
     const isPendingDeletion = !!pl.deletedAt;
 
+    // "Reaches nobody" detection for the informative banner. Two independent
+    // reasons: the list is disabled (global), or on the active channel it has
+    // no audience at all (not available to everyone + no customers/groups).
+    // `enabled` is the live form value so the banner reacts to the toggle
+    // before saving. Suppressed while pending deletion (its own banner shows).
+    const hasNoAudience =
+        !assignedToEveryone && assignedCustomerCount === 0 && assignedGroupCount === 0;
+    const isInaccessible = !isPendingDeletion && (!enabled || hasNoAudience);
+
     return (
         <Page pageId="pricelist-detail">
             <PageTitle>{pl.name}</PageTitle>
 
             {!isEditable && <ReadOnlyBanner originChannelCode={pl.originChannel.code} />}
+
 
             {isPendingDeletion && (
                 <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm">
@@ -268,6 +350,14 @@ export function PriceListDetailPage() {
             </PageActionBar>
 
             <PageLayout>
+                <PageBlock column="side" blockId="pricelist-status" title="Status" >
+                    {
+                        !isInaccessible && <Badge className='bg-success/10 text-success dark:bg-success/20 [a]:hover:bg-success/20'>{t`Enabled`}</Badge>
+                    }
+                    {isInaccessible && (
+                        <InaccessibleBanner isDisabled={!enabled} hasNoAudience={hasNoAudience} />
+                    )}
+                </PageBlock>
                 {/*
                   PageBlock already renders its own Card+CardHeader+CardContent
                   (with optional title/description props). Earlier code wrapped
@@ -327,16 +417,6 @@ export function PriceListDetailPage() {
                                 </span>
                             </div>
                         </FormRow>
-                        <FormRow label={t`Priority`}>
-                            <Input
-                                type="number"
-                                value={priority}
-                                onChange={e =>
-                                    setPriority(parseInt(e.target.value, 10) || 0)
-                                }
-                                disabled={!isEditable}
-                            />
-                        </FormRow>
                         <FormRow label={t`Enabled`}>
                             <Switch
                                 checked={enabled}
@@ -344,21 +424,44 @@ export function PriceListDetailPage() {
                                 disabled={!isEditable}
                             />
                         </FormRow>
-                        <FormRow label={t`Starts`}>
-                            <Input
-                                type="datetime-local"
-                                value={startDate}
-                                onChange={e => setStartDate(e.target.value)}
+                        <FormRow label={t`Timezone`}>
+                            <TimezoneSelect
+                                value={timezone}
+                                onChange={setTimezone}
                                 disabled={!isEditable}
                             />
                         </FormRow>
+                        <FormRow label={t`Starts`}>
+                            <div className="flex gap-2">
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={e => setStartDate(e.target.value)}
+                                    disabled={!isEditable}
+                                />
+                                <Input
+                                    type="time"
+                                    value={startTime}
+                                    onChange={e => setStartTime(e.target.value)}
+                                    disabled={!isEditable || !startDate}
+                                />
+                            </div>
+                        </FormRow>
                         <FormRow label={t`Ends`}>
-                            <Input
-                                type="datetime-local"
-                                value={endDate}
-                                onChange={e => setEndDate(e.target.value)}
-                                disabled={!isEditable}
-                            />
+                            <div className="flex gap-2">
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={e => setEndDate(e.target.value)}
+                                    disabled={!isEditable}
+                                />
+                                <Input
+                                    type="time"
+                                    value={endTime}
+                                    onChange={e => setEndTime(e.target.value)}
+                                    disabled={!isEditable || !endDate}
+                                />
+                            </div>
                         </FormRow>
                         <FormRow label={t`Origin channel`}>
                             <code className="text-sm"><ChannelCodeLabel code={pl.originChannel.code} /></code>
