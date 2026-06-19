@@ -43,7 +43,10 @@ import {
     simulatorCustomersQuery,
 } from '../gql/queries';
 
+import { zonedWallClockToUtcIso } from '../util/zoned-time';
+
 import { AddVariantToPriceListDialog } from './add-variant-to-pricelist-dialog';
+import { TimezoneSelect } from './timezone-select';
 
 /**
  * Page-block dropped onto the ProductVariant detail page (main column,
@@ -106,10 +109,24 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
     const [group, setGroup] = useState<{ id: string; name: string } | null>(null);
     const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrencyCode);
     const [quantity, setQuantity] = useState<number>(1);
-    // Optional "preview at" instant (datetime-local, browser-local wall-clock).
-    // Empty = simulate at "now" (server time). Sent as an absolute UTC instant.
+    // Optional "preview at" wall-clock (datetime-local, "YYYY-MM-DDTHH:mm").
+    // Empty = simulate at "now" (server time). The wall-clock is interpreted
+    // in the chosen IANA `simTz` (defaults to the browser's zone), then sent
+    // as an absolute UTC instant — same convention as the list's start/end
+    // dates, so a preview lines up with how a scheduled list actually resolves.
     const [simAt, setSimAt] = useState<string>('');
-    const atIso = simAt ? new Date(simAt).toISOString() : undefined;
+    const [simTz, setSimTz] = useState(() => {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        } catch {
+            return 'UTC';
+        }
+    });
+    const atIso = useMemo(() => {
+        if (!simAt) return undefined;
+        const [date, time] = simAt.split('T');
+        return zonedWallClockToUtcIso(date, time ?? '00:00', simTz);
+    }, [simAt, simTz]);
 
     // The simulation only runs once the chosen mode has a valid target.
     const targetReady =
@@ -129,6 +146,7 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
             customerId ?? null,
             customerGroupId ?? null,
             atIso ?? null,
+            simTz,
         ],
         queryFn: () =>
             // `as any` on the variables follows the established
@@ -318,7 +336,8 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
                         </div>
                     </div>
 
-                    {/* Optional preview-at date: empty = now (server time). */}
+                    {/* Optional preview-at date: empty = now (server time).
+                        The date is read in the timezone picked alongside it. */}
                     <div className="space-y-1.5">
                         <Label>{t`Simulate at`}</Label>
                         <div className="flex items-center gap-2">
@@ -339,9 +358,14 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
                                 </Button>
                             )}
                         </div>
+                        <TimezoneSelect
+                            value={simTz}
+                            onChange={setSimTz}
+                            disabled={!simAt}
+                        />
                         <p className="text-xs text-muted-foreground">
                             {simAt
-                                ? t`Previewing prices active at this date.`
+                                ? t`Previewing prices active at this date, read in the selected timezone.`
                                 : t`Empty = now. Set a date to preview scheduled pricelists.`}
                         </p>
                     </div>

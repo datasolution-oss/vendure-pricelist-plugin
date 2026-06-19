@@ -35,8 +35,9 @@ import { TimezoneSelect } from './timezone-select';
  * `value` is interpreted, and cannot be safely flipped later without
  * re-deriving every row.
  *
- * Timezone defaults to UTC and is collected here too — it's the zone the
- * `startDate`/`endDate` window (set on the detail page) is interpreted in.
+ * Timezone defaults to the browser's detected zone (falling back to UTC)
+ * and is collected here too — it's the zone the `startDate`/`endDate`
+ * window (set on the detail page) is interpreted in.
  *
  * The translation row submitted uses the dashboard's active content
  * language (the language picker in the top bar), so "Name" is the name
@@ -52,7 +53,13 @@ export function CreatePriceListDialog({ onCreated }: Readonly<{ onCreated?: () =
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [valueType, setValueType] = useState<PriceListValueType>('ABSOLUTE');
-  const [timezone, setTimezone] = useState('UTC');
+  const [timezone, setTimezone] = useState(() => {
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    } catch {
+      return 'UTC';
+    }
+  });
 
   // Base UI's <SelectValue> renders the raw selected value unless the root is
   // given an `items` map (value -> label); single-sourced here so the trigger
