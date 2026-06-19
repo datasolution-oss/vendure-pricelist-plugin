@@ -63,6 +63,7 @@ export class PriceListSimulationService {
         currencyCode: CurrencyCode,
         quantity: number,
         target: SimulationTarget,
+        at?: Date,
     ): Promise<SimulatedVariantPrice> {
         if (target.customerId != null && target.customerGroupId != null) {
             throw new UserInputError(
@@ -109,10 +110,14 @@ export class PriceListSimulationService {
         }
         // else: anonymous — only `assignedToEveryone` lists apply.
 
+        // `at` (optional) previews the cascade at an arbitrary instant; it
+        // makes the resolution bypass the candidate-set cache (see
+        // ResolveOptions). Omitted → "now", using the normal cached path.
         const groups = await this.options.resolutionStrategy!.resolve(
             ctx,
             customerId,
             customerGroupIds,
+            at ? { asOf: at } : undefined,
         );
         const resolved = groups.length
             ? await this.options.calculationStrategy!.calculate(

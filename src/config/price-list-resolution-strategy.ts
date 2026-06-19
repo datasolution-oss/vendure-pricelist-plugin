@@ -42,5 +42,21 @@ export interface PriceListResolutionStrategy extends InjectableStrategy {
         ctx: RequestContext,
         customerId: ID | undefined,
         customerGroupIds: ID[],
+        opts?: ResolveOptions,
     ): Promise<ResolvedPriceListGroup[]>;
+}
+
+/**
+ * Optional resolution modifiers.
+ *
+ * `asOf` evaluates date-validity against an arbitrary instant instead of
+ * "now" — used by admin tooling (the variant-page price simulator) to
+ * preview which lists would be active at a future/past date. When set, the
+ * shipped default strategy also **bypasses its candidate-set cache** (read
+ * and write): that cache is keyed without a date and its TTL is tied to the
+ * real next validity boundary, so an arbitrary `asOf` must neither read a
+ * "now" entry nor write a dated one that would poison live pricing.
+ */
+export interface ResolveOptions {
+    asOf?: Date;
 }

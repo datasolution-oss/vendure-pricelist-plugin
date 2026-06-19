@@ -106,6 +106,10 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
     const [group, setGroup] = useState<{ id: string; name: string } | null>(null);
     const [currencyCode, setCurrencyCode] = useState<string>(defaultCurrencyCode);
     const [quantity, setQuantity] = useState<number>(1);
+    // Optional "preview at" instant (datetime-local, browser-local wall-clock).
+    // Empty = simulate at "now" (server time). Sent as an absolute UTC instant.
+    const [simAt, setSimAt] = useState<string>('');
+    const atIso = simAt ? new Date(simAt).toISOString() : undefined;
 
     // The simulation only runs once the chosen mode has a valid target.
     const targetReady =
@@ -124,6 +128,7 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
             quantity,
             customerId ?? null,
             customerGroupId ?? null,
+            atIso ?? null,
         ],
         queryFn: () =>
             // `as any` on the variables follows the established
@@ -136,6 +141,7 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
                     quantity,
                     customerId,
                     customerGroupId,
+                    at: atIso,
                 },
             } as any) as Promise<{ simulateVariantPrice: SimulatedVariantPrice }>,
         enabled: !!variantId && targetReady && quantity >= 1,
@@ -310,6 +316,34 @@ export function VariantPriceListBlock({ context }: Readonly<{ context: { entity?
                                 }
                             />
                         </div>
+                    </div>
+
+                    {/* Optional preview-at date: empty = now (server time). */}
+                    <div className="space-y-1.5">
+                        <Label>{t`Simulate at`}</Label>
+                        <div className="flex items-center gap-2">
+                            <Input
+                                type="datetime-local"
+                                value={simAt}
+                                onChange={e => setSimAt(e.target.value)}
+                            />
+                            {simAt && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon-sm"
+                                    onClick={() => setSimAt('')}
+                                    aria-label={t`Clear`}
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            {simAt
+                                ? t`Previewing prices active at this date.`
+                                : t`Empty = now. Set a date to preview scheduled pricelists.`}
+                        </p>
                     </div>
 
                     <Separator />

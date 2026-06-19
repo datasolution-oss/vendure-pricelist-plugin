@@ -14,7 +14,7 @@ import { PriceListGroup } from '../../entities/price-list-group.entity';
 import { PriceList } from '../../entities/price-list.entity';
 import { PluginInitOptions } from '../../types';
 import { ResolvedPriceListGroup } from '../../types/resolved-price';
-import { PriceListResolutionStrategy } from '../price-list-resolution-strategy';
+import { PriceListResolutionStrategy, ResolveOptions } from '../price-list-resolution-strategy';
 
 import { ChannelMatchPredicate } from './channel-match.predicate';
 import { DateValidityPredicate } from './date-validity.predicate';
@@ -78,6 +78,7 @@ export class DefaultPriceListResolutionStrategy
         ctx: RequestContext,
         customerId: ID | undefined,
         customerGroupIds: ID[],
+        opts?: ResolveOptions,
     ): Promise<ResolvedPriceListGroup[]> {
         // Kill switch — short-circuit before any DB round-trip. The map
         // may be keyed by channel id (programmatic config) or by channel
@@ -88,16 +89,24 @@ export class DefaultPriceListResolutionStrategy
             return [];
         }
 
-        const nowUtc = new Date();
+        // `asOf` (simulator preview) evaluates validity at an arbitrary
+        // instant and MUST bypass the cache: the cache key carries no date
+        // and its TTL is tied to the real next boundary, so reading a "now"
+        // entry would be wrong and writing a dated one would poison live
+        // pricing for real shoppers.
+        const nowUtc = opts?.asOf ?? new Date();
+        const bypassCache = opts?.asOf != null;
         const cacheKey = this.buildCacheKey(ctx, customerId, customerGroupIds);
 
         // Layer A — try cache. Stored value is the lightweight CachedEntry;
         // we re-hydrate full entities from it (group + lists) to honour
         // the strategy contract (`ResolvedPriceListGroup` carries real
         // entity instances downstream consumers can read translations on).
-        const cached = await this.cacheService.get<CachedEntry>(cacheKey);
-        if (cached && nowUtc.getTime() < cached.expiresAt) {
-            return this.hydrateCached(ctx, cached);
+        if (!bypassCache) {
+            const cached = await this.cacheService.get<CachedEntry>(cacheKey);
+            if (cached && nowUtc.getTime() < cached.expiresAt) {
+                return this.hydrateCached(ctx, cached);
+            }
         }
 
         // Fetch — single query with all the joins. We use a QueryBuilder
@@ -208,7 +217,9 @@ export class DefaultPriceListResolutionStrategy
             }))
             .sort((a, b) => a.group.priority - b.group.priority);
 
-        await this.writeCache(cacheKey, ctx, customerId, result, nowUtc);
+        if (!bypassCache) {
+            await this.writeCache(cacheKey, ctx, customerId, result, nowUtc);
+        }
         return result;
     }
 

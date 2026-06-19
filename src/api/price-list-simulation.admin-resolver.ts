@@ -50,10 +50,11 @@ export class PriceListSimulationAdminResolver {
                 quantity: number;
                 customerId?: ID;
                 customerGroupId?: ID;
+                at?: Date;
             };
         },
     ): Promise<SimulatedVariantPrice> {
-        const { productVariantId, currencyCode, quantity, customerId, customerGroupId } =
+        const { productVariantId, currencyCode, quantity, customerId, customerGroupId, at } =
             args.input;
         return this.simulationService.simulate(
             ctx,
@@ -61,6 +62,7 @@ export class PriceListSimulationAdminResolver {
             currencyCode,
             quantity,
             { customerId, customerGroupId },
+            at,
         );
     }
 }
